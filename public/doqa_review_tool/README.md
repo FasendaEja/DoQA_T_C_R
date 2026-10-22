@@ -10,6 +10,7 @@ Python-утилита для автоматического ревью тест-
 - **Получение тест-кейсов из файла** — альтернативный вариант: загрузка из xlsx файла экспорта DoQA
 - **Анализ ИИ** — каждый тест-кейс отправляется в ИИ для проверки на соответствие правилам
 - **Редактируемый промт** — промт хранится в отдельном файле и перечитывается при каждом запуске
+- **Конфигурация через .env** — все параметры задаются в одном файле
 - **Результаты в файлах** — для каждого кейса создаётся отдельный файл с результатом ревью
 
 ## Установка
@@ -19,48 +20,126 @@ Python-утилита для автоматического ревью тест-
 pip install -r requirements.txt
 ```
 
+## Настройка через .env
+
+### 1. Создайте файл .env
+
+Скопируйте `.env.example` в `.env` и заполните значения:
+
+```bash
+cp .env.example .env
+```
+
+### 2. Заполните обязательные параметры
+
+Минимальный `.env` для работы:
+
+```env
+# Обязательные
+DOQA_API_TOKEN=ваш_api_токен_doqa
+AI_API_KEY=ваш_ключ_ии
+
+# Режим работы
+DOQA_MODE=file
+DOQA_FILE=export.xlsx
+```
+
+### 3. Полный список параметров
+
+| Переменная | Описание | По умолчанию |
+|---|---|---|
+| `DOQA_BASE_URL` | URL экземпляра DoQA | `https://app.doqa.app` |
+| `DOQA_API_TOKEN` | API-токен DoQA | — |
+| `DOQA_MODE` | Режим: `api` или `file` | `api` |
+| `DOQA_SPACE_ID` | ID пространства (для api) | — |
+| `DOQA_CASE_IDS` | ID кейсов через запятую | — |
+| `DOQA_FILE` | Путь к файлу xlsx (для file) | — |
+| `AI_API_URL` | URL API провайдера ИИ | `https://api.openai.com/v1/chat/completions` |
+| `AI_API_KEY` | API-ключ провайдера ИИ | — |
+| `AI_MODEL` | Модель ИИ | `gpt-4o` |
+| `PROMPT_FILE` | Путь к файлу с промтом | `prompt.txt` |
+| `RULES_FILE` | Путь к файлу с правилами | `DoQA_test_case_review_rules.txt` |
+| `OUTPUT_DIR` | Директория для результатов | `review_results` |
+
 ## Использование
 
-### Режим 1: Получение кейсов через API DoQA
+### Приоритет параметров
+
+1. **Аргументы командной строки** (`--mode`, `--space-id`, ...) — высший приоритет
+2. **Переменные окружения** (экспортированные в shell)
+3. **Файл .env** (в директории скрипта или текущей)
+4. **Значения по умолчанию** — низший приоритет
+
+### Запуск только по .env (без аргументов)
 
 ```bash
-# Через переменные окружения
-export DOQA_API_TOKEN="ваш_токен"
-export AI_API_KEY="ваш_ключ_ии"
-
-python doqa_review.py --mode api --space-id 123 --case-ids 456,789,101
-
-# Или через аргументы командной строки
-python doqa_review.py --mode api --space-id 123 --case-ids 456,789 --token "ваш_токен" --ai-key "ключ_ии"
+# Все параметры берутся из .env
+python doqa_review.py
 ```
 
-### Режим 2: Получение кейсов из файла экспорта DoQA
+### Переопределить параметры через CLI
 
 ```bash
-# Конкретные кейсы из файла
-python doqa_review.py --mode file --file export.xlsx --case-ids 456,789 --ai-key "ключ_ии"
+# Переопределить режим и файл
+python doqa_review.py --mode file --file other_export.xlsx
 
-# Все кейсы из файла
-python doqa_review.py --mode file --file export.xlsx --ai-key "ключ_ии"
+# Переопределить только space_id
+python doqa_review.py --space-id 999
+
+# Указать токен напрямую (не из .env)
+python doqa_review.py --token "временный_токен" --ai-key "ключ"
 ```
 
-### Настройка ИИ
-
-По умолчанию используется OpenAI API. Для использования другого провайдера:
+### Показать текущую конфигурацию
 
 ```bash
-export AI_API_URL="https://your-ai-provider.com/v1/chat/completions"
-export AI_API_KEY="your-key"
-export AI_MODEL="your-model-name"
+python doqa_review.py --show-config
 ```
 
-Поддерживается любой OpenAI-совместимый API (OpenAI, YandexGPT, GigaChat и др.).
+### Примеры .env для разных сценариев
+
+**Режим API:**
+```env
+DOQA_MODE=api
+DOQA_SPACE_ID=123
+DOQA_CASE_IDS=456,789,101
+DOQA_API_TOKEN=your_token
+AI_API_KEY=your_ai_key
+```
+
+**Режим файл:**
+```env
+DOQA_MODE=file
+DOQA_FILE=export.xlsx
+AI_API_KEY=your_ai_key
+```
+
+**С YandexGPT:**
+```env
+AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+AI_API_KEY=your_yandex_key
+AI_MODEL=yandexgpt
+```
+
+## Запуск в PyCharm
+
+1. Откройте папку `doqa_review_tool/` как проект
+2. Создайте виртуальное окружение (File → Settings → Python Interpreter)
+3. Установите зависимости: `pip install -r requirements.txt`
+4. Создайте `.env` файл на основе `.env.example`
+5. Run → Edit Configurations → добавьте Python configuration
+6. Script: `doqa_review.py`, Working directory: путь к проекту
+7. Parameters: оставьте пустыми (всё в .env) или переопределяйте частично
+8. Запустите через Shift+F9 (Debug) или Shift+F10 (Run)
 
 ## Структура файлов
 
 ```
 doqa_review_tool/
 ├── doqa_review.py                      # Основной скрипт утилиты
+├── .env                                # Ваши настройки (НЕ коммитить!)
+├── .env.example                        # Шаблон .env
+├── .gitignore                          # Исключения для git
 ├── prompt.txt                          # Промт для ИИ (редактируемый)
 ├── DoQA_test_case_review_rules.txt     # Правила проверки тест-кейсов
 ├── requirements.txt                    # Python-зависимости
@@ -69,19 +148,6 @@ doqa_review_tool/
     ├── Ревью кейса_456_2024-01-15_14-30-00.txt
     └── Ревью кейса_789_2024-01-15_14-30-05.txt
 ```
-
-## Переменные окружения
-
-| Переменная | Описание | По умолчанию |
-|---|---|---|
-| `DOQA_BASE_URL` | URL экземпляра DoQA | `https://app.doqa.app` |
-| `DOQA_API_TOKEN` | API-токен DoQA | — |
-| `AI_API_URL` | URL API провайдера ИИ | `https://api.openai.com/v1/chat/completions` |
-| `AI_API_KEY` | API-ключ провайдера ИИ | — |
-| `AI_MODEL` | Модель ИИ | `gpt-4o` |
-| `PROMPT_FILE` | Путь к файлу с промтом | `prompt.txt` |
-| `RULES_FILE` | Путь к файлу с правилами | `DoQA_test_case_review_rules.txt` |
-| `OUTPUT_DIR` | Директория для результатов | `review_results` |
 
 ## Примечания по API DoQA
 

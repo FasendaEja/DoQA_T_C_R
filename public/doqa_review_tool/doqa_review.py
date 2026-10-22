@@ -7,6 +7,9 @@
 2. Передача каждого тест-кейса в ИИ для анализа на соответствие правилам
 3. Сохранение результатов ревью в отдельные файлы
 
+Все параметры можно задать через .env файл (см. .env.example).
+Аргументы командной строки имеют приоритет над .env.
+
 Версия DoQA: 4.3.1
 """
 
@@ -18,9 +21,23 @@ import requests
 import openpyxl
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 
 # ============================================================
-# КОНФИГУРАЦИЯ
+# ЗАГРУЗКА .env ФАЙЛА
+# ============================================================
+
+# Загружаем .env из текущей директории (или директории скрипта)
+# find_doten позволяет найти .env даже при запуске из другой директории
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
+else:
+    # Пробуем загрузить из текущей рабочей директории
+    load_dotenv()
+
+# ============================================================
+# КОНФИГУРАЦИЯ (из .env или переменных окружения)
 # ============================================================
 
 # Базовый URL DoQA (измените на адрес вашего экземпляра DoQA)
@@ -28,6 +45,12 @@ DOQA_BASE_URL = os.environ.get("DOQA_BASE_URL", "https://app.doqa.app")
 
 # API-токен DoQA (получить в профиле пользователя -> API-токены)
 DOQA_API_TOKEN = os.environ.get("DOQA_API_TOKEN", "")
+
+# Параметры запуска из .env
+DOQA_MODE = os.environ.get("DOQA_MODE", "api")
+DOQA_SPACE_ID = os.environ.get("DOQA_SPACE_ID", "")
+DOQA_CASE_IDS = os.environ.get("DOQA_CASE_IDS", "")
+DOQA_FILE = os.environ.get("DOQA_FILE", "")
 
 # Путь к файлу с промтом для ИИ
 PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
@@ -70,7 +93,7 @@ def get_test_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
     """
     if not DOQA_API_TOKEN:
         print("ОШИБКА: Не указан API-токен DoQA.")
-        print("Установите переменную окружения DOQA_API_TOKEN или передайте через --token")
+        print("Укажите DOQA_API_TOKEN в файле .env или через переменную окружения")
         sys.exit(1)
 
     headers = {
@@ -103,13 +126,13 @@ def get_test_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
             if response.status_code == 404:
                 print(f"    ✗ Кейс {case_id} не найден в пространстве {space_id}")
             elif response.status_code == 401:
-                print(f"    ✗ Ошибка авторизации. Проверьте API-токен.")
+                print(f"    ✗ Ошибка авторизации. Проверьте DOQA_API_TOKEN в .env")
                 sys.exit(1)
             else:
                 print(f"    ✗ HTTP ошибка при загрузке кейса {case_id}: {e}")
         except requests.exceptions.ConnectionError:
             print(f"    ✗ Не удалось подключиться к {DOQA_BASE_URL}")
-            print(f"      Проверьте DOQA_BASE_URL и подключение к сети")
+            print(f"      Проверьте DOQA_BASE_URL в .env и подключение к сети")
             sys.exit(1)
         except Exception as e:
             print(f"    ✗ Ошибка при загрузке кейса {case_id}: {e}")
@@ -185,6 +208,7 @@ def get_test_cases_from_file(file_path: str, case_ids: list[str] = None) -> list
     """
     if not os.path.exists(file_path):
         print(f"ОШИБКА: Файл не найден: {file_path}")
+        print(f"Укажите DOQA_FILE в .env или через --file")
         sys.exit(1)
 
     print(f"  Чтение файла экспорта DoQA: {file_path}")
@@ -299,7 +323,7 @@ def load_prompt(prompt_file: str) -> str:
     """
     if not os.path.exists(prompt_file):
         print(f"ОШИБКА: Файл с промтом не найден: {prompt_file}")
-        print("Создайте файл с промтом или укажите правильный путь через --prompt-file")
+        print("Создайте файл с промтом или укажите PROMPT_FILE в .env")
         sys.exit(1)
     
     with open(prompt_file, "r", encoding="utf-8") as f:
@@ -360,8 +384,8 @@ def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
     """
     if not AI_API_KEY:
         print("ОШИБКА: Не указан API-ключ ИИ.")
-        print("Установите переменную окружения AI_API_KEY")
-        return "ОШИБКА: Не указан API-ключ ИИ. Установите переменную окружения AI_API_KEY"
+        print("Укажите AI_API_KEY в файле .env")
+        return "ОШИБКА: Не указан API-ключ ИИ. Укажите AI_API_KEY в файле .env"
 
     case_text = format_test_case_for_ai(test_case)
     
@@ -406,7 +430,7 @@ def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
     except requests.exceptions.HTTPError as e:
         error_msg = f"HTTP ошибка при обращении к ИИ: {e}"
         if response.status_code == 401:
-            error_msg += "\nПроверьте правильность AI_API_KEY"
+            error_msg += "\nПроверьте AI_API_KEY в .env"
         elif response.status_code == 429:
             error_msg += "\nПревышен лимит запросов. Подождите и попробуйте снова."
         print(f"  {error_msg}")
@@ -449,6 +473,30 @@ def save_review_result(case_id: str, review_text: str, output_dir: str):
 
 
 # ============================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ============================================================
+
+def parse_case_ids(case_ids_str: str) -> list[str]:
+    """Парсинг строки с ID кейсов в список."""
+    if not case_ids_str:
+        return []
+    return [cid.strip() for cid in case_ids_str.split(",") if cid.strip()]
+
+
+def print_config_summary(mode: str, space_id: str, case_ids: list, file_path: str):
+    """Вывод сводки текущей конфигурации."""
+    print("  Текущая конфигурация:")
+    print(f"    DOQA_BASE_URL  = {DOQA_BASE_URL}")
+    print(f"    DOQA_API_TOKEN = {'***' + DOQA_API_TOKEN[-4:] if DOQA_API_TOKEN else '(не задан)'}")
+    print(f"    AI_API_URL     = {AI_API_URL}")
+    print(f"    AI_MODEL       = {AI_MODEL}")
+    print(f"    AI_API_KEY     = {'***' + AI_API_KEY[-4:] if AI_API_KEY else '(не задан)'}")
+    print(f"    PROMPT_FILE    = {PROMPT_FILE}")
+    print(f"    RULES_FILE     = {RULES_FILE}")
+    print(f"    OUTPUT_DIR     = {OUTPUT_DIR}")
+
+
+# ============================================================
 # ГЛАВНАЯ ФУНКЦИЯ
 # ============================================================
 
@@ -457,68 +505,76 @@ def main():
         description="Утилита для ревью тест-кейсов DoQA с использованием ИИ",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Примеры использования:
+ПРИОРИТЕТ ПАРАМЕТРОВ (от высшего к низшему):
+  1. Аргументы командной строки (--mode, --space-id, ...)
+  2. Переменные окружения (DOQA_MODE, DOQA_SPACE_ID, ...)
+  3. Файл .env (в директории скрипта или текущей)
+  4. Значения по умолчанию
 
-  # Получение кейсов через API:
-  python doqa_review.py --space-id 123 --case-ids 456,789,101 --mode api
+ПРИМЕРЫ:
 
-  # Получение кейсов из файла экспорта:
-  python doqa_review.py --file export.xlsx --case-ids 456,789 --mode file
+  # Запуск только по .env (без аргументов):
+  python doqa_review.py
 
-  # Все кейсы из файла:
-  python doqa_review.py --file export.xlsx --mode file
+  # Переопределить параметры из .env через CLI:
+  python doqa_review.py --mode file --file other_export.xlsx
 
-Переменные окружения:
-  DOQA_BASE_URL   - URL DoQA (по умолчанию: https://app.doqa.app)
-  DOQA_API_TOKEN  - API-токен DoQA
-  AI_API_URL      - URL ИИ API (по умолчанию: OpenAI)
-  AI_API_KEY      - API-ключ ИИ
-  AI_MODEL        - Модель ИИ (по умолчанию: gpt-4o)
-  PROMPT_FILE     - Путь к файлу с промтом
-  RULES_FILE      - Путь к файлу с правилами
-  OUTPUT_DIR      - Директория для результатов
+  # Указать отдельные параметры:
+  python doqa_review.py --space-id 999 --case-ids 111,222
+
+ДОКУМЕНТАЦИЯ:
+  См. README.md и .env.example
         """
     )
 
     # Параметры источника данных
     source_group = parser.add_argument_group("Источник тест-кейсов")
-    source_group.add_argument("--mode", choices=["api", "file"], default="api",
-                              help="Режим получения кейсов: api или file (по умолчанию: api)")
-    source_group.add_argument("--space-id", type=str,
+    source_group.add_argument("--mode", choices=["api", "file"], default=None,
+                              help="Режим получения кейсов: api или file (по умолчанию из .env)")
+    source_group.add_argument("--space-id", type=str, default=None,
                               help="ID пространства DoQA (для режима api)")
-    source_group.add_argument("--case-ids", type=str,
+    source_group.add_argument("--case-ids", type=str, default=None,
                               help="Список ID тест-кейсов через запятую")
-    source_group.add_argument("--file", type=str,
+    source_group.add_argument("--file", type=str, default=None,
                               help="Путь к файлу экспорта DoQA (xlsx) (для режима file)")
 
     # Параметры подключения
     conn_group = parser.add_argument_group("Подключение")
-    conn_group.add_argument("--base-url", type=str,
+    conn_group.add_argument("--base-url", type=str, default=None,
                             help="Базовый URL DoQA")
-    conn_group.add_argument("--token", type=str,
+    conn_group.add_argument("--token", type=str, default=None,
                             help="API-токен DoQA")
-    conn_group.add_argument("--ai-url", type=str,
+    conn_group.add_argument("--ai-url", type=str, default=None,
                             help="URL ИИ API")
-    conn_group.add_argument("--ai-key", type=str,
+    conn_group.add_argument("--ai-key", type=str, default=None,
                             help="API-ключ ИИ")
-    conn_group.add_argument("--ai-model", type=str,
+    conn_group.add_argument("--ai-model", type=str, default=None,
                             help="Модель ИИ")
 
     # Параметры файлов
     files_group = parser.add_argument_group("Файлы")
-    files_group.add_argument("--prompt-file", type=str,
+    files_group.add_argument("--prompt-file", type=str, default=None,
                              help="Путь к файлу с промтом")
-    files_group.add_argument("--rules-file", type=str,
+    files_group.add_argument("--rules-file", type=str, default=None,
                              help="Путь к файлу с правилами ревью")
-    files_group.add_argument("--output-dir", type=str,
+    files_group.add_argument("--output-dir", type=str, default=None,
                              help="Директория для результатов")
+
+    # Специальный флаг для показа текущей конфигурации
+    parser.add_argument("--show-config", action="store_true",
+                        help="Показать текущую конфигурацию и выйти")
 
     args = parser.parse_args()
 
-    # Применяем параметры из аргументов командной строки
+    # ============================================================
+    # ПРИМЕНЕНИЕ ПАРАМЕТРОВ
+    # Приоритет: CLI args > .env (уже загружен в os.environ) > defaults
+    # ============================================================
+
     global DOQA_BASE_URL, DOQA_API_TOKEN, AI_API_URL, AI_API_KEY, AI_MODEL
     global PROMPT_FILE, RULES_FILE, OUTPUT_DIR
 
+    # Переопределяем глобальные переменные из CLI (если указаны)
     if args.base_url:
         DOQA_BASE_URL = args.base_url
     if args.token:
@@ -536,45 +592,87 @@ def main():
     if args.output_dir:
         OUTPUT_DIR = args.output_dir
 
-    # Парсим ID кейсов
-    case_ids = []
+    # Определяем режим работы (CLI > .env > default)
+    mode = args.mode if args.mode else DOQA_MODE
+    
+    # Определяем space_id (CLI > .env)
+    space_id = args.space_id if args.space_id else DOQA_SPACE_ID
+    
+    # Определяем case_ids (CLI > .env)
     if args.case_ids:
-        case_ids = [cid.strip() for cid in args.case_ids.split(",") if cid.strip()]
+        case_ids = parse_case_ids(args.case_ids)
+    else:
+        case_ids = parse_case_ids(DOQA_CASE_IDS)
+    
+    # Определяем файл (CLI > .env)
+    file_path = args.file if args.file else DOQA_FILE
 
-    # Валидация параметров
-    if args.mode == "api" and not args.space_id:
-        print("ОШИБКА: Для режима 'api' необходимо указать --space-id")
-        parser.print_help()
+    # Показать конфигурацию и выйти
+    if args.show_config:
+        print("=" * 60)
+        print("  Текущая конфигурация (из .env + CLI)")
+        print("=" * 60)
+        print_config_summary(mode, space_id, case_ids, file_path)
+        print()
+        print(f"  Режим работы: {mode}")
+        print(f"  Space ID:     {space_id or '(не задан)'}")
+        print(f"  Case IDs:     {case_ids or '(все)'}")
+        print(f"  Файл:         {file_path or '(не задан)'}")
+        print("=" * 60)
+        sys.exit(0)
+
+    # ============================================================
+    # ВАЛИДАЦИЯ ПАРАМЕТРОВ
+    # ============================================================
+
+    if mode == "api" and not space_id:
+        print("ОШИБКА: Для режима 'api' необходимо указать space_id.")
+        print("  Укажите в .env: DOQA_SPACE_ID=<id>")
+        print("  Или через CLI:  --space-id <id>")
         sys.exit(1)
 
-    if args.mode == "api" and not case_ids:
-        print("ОШИБКА: Необходимо указать хотя бы один ID кейса (--case-ids)")
+    if mode == "api" and not case_ids:
+        print("ОШИБКА: Необходимо указать хотя бы один ID кейса.")
+        print("  Укажите в .env: DOQA_CASE_IDS=456,789,101")
+        print("  Или через CLI:  --case-ids 456,789,101")
         sys.exit(1)
 
-    if args.mode == "file" and not args.file:
-        print("ОШИБКА: Для режима 'file' необходимо указать --file")
+    if mode == "file" and not file_path:
+        print("ОШИБКА: Для режима 'file' необходимо указать путь к файлу.")
+        print("  Укажите в .env: DOQA_FILE=export.xlsx")
+        print("  Или через CLI:  --file export.xlsx")
         sys.exit(1)
+
+    # ============================================================
+    # ВЫПОЛНЕНИЕ
+    # ============================================================
 
     print("=" * 60)
     print("  Утилита ревью тест-кейсов DoQA с использованием ИИ")
     print("=" * 60)
+    
+    # Показываем откуда загружена конфигурация
+    env_loaded = _env_path.exists()
+    print(f"\n  Конфигурация загружена из: {'файл .env' if env_loaded else 'переменные окружения / значения по умолчанию'}")
+    if env_loaded:
+        print(f"  Путь к .env: {_env_path}")
 
     # Шаг 1: Получение тест-кейсов
-    print("\n[Шаг 1] Получение тест-кейсов...")
+    print(f"\n[Шаг 1] Получение тест-кейсов...")
     
-    if args.mode == "api":
+    if mode == "api":
         print(f"  Режим: API DoQA")
-        print(f"  Пространство: {args.space_id}")
+        print(f"  Пространство: {space_id}")
         print(f"  ID кейсов: {case_ids}")
-        test_cases = get_test_cases_from_api(args.space_id, case_ids)
+        test_cases = get_test_cases_from_api(space_id, case_ids)
     else:
         print(f"  Режим: Файл экспорта")
-        print(f"  Файл: {args.file}")
+        print(f"  Файл: {file_path}")
         if case_ids:
             print(f"  ID кейсов (фильтр): {case_ids}")
         else:
             print(f"  Все кейсы из файла")
-        test_cases = get_test_cases_from_file(args.file, case_ids if case_ids else None)
+        test_cases = get_test_cases_from_file(file_path, case_ids if case_ids else None)
 
     if not test_cases:
         print("\nОШИБКА: Не удалось получить тест-кейсы")
