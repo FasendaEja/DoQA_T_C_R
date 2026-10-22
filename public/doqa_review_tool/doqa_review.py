@@ -245,12 +245,19 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
                 debug_info += f"  message (repr): {repr(message)[:500]}"
             return debug_info
 
-        # Показываем причину завершения
+        # Выводим причину завершения ответа
         finish_reason = choice.finish_reason
+        print(f"      finish_reason: {finish_reason}")
         if finish_reason == "length":
             print(f"      ⚠ Ответ обрезан (достигнут лимит токенов)")
         elif finish_reason == "content_filter":
             print(f"      ⚠ Ответ заблокирован контент-фильтром")
+        elif finish_reason == "tool_calls":
+            print(f"      ℹ Модель запросила вызов инструментов")
+        elif finish_reason == "stop":
+            pass  # нормальное завершение
+        elif finish_reason is None:
+            print(f"      ⚠ finish_reason не указан")
 
         # Информация о токенах
         if response.usage:
