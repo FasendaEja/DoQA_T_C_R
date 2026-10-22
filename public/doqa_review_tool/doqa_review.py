@@ -2,7 +2,11 @@
 """
 Утилита ревью тест-кейсов DoQA с использованием ИИ.
 
-DoQA 4.3.1 | Эндпоинт: GET /api/cases/{caseId}
+DoQA 4.3.1 | 3 режима работы:
+  1. api    — получение кейсов через GET /api/cases/{caseId}
+  2. file   — загрузка из локального xlsx файла
+  3. export — экспорт через POST /api/cases/export с фильтрами
+
 Все параметры берутся из .env файла (см. .env.example).
 """
 
@@ -22,10 +26,12 @@ load_dotenv(_env_path if _env_path.exists() else None)
 # ── Конфигурация ─────────────────────────────────────────────
 DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
 DOQA_TOKEN = os.getenv("DOQA_API_TOKEN", "")
-DOQA_MODE = os.getenv("DOQA_MODE", "").lower()  # api или file
+DOQA_MODE = os.getenv("DOQA_MODE", "").lower()  # api, file или export
 DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
 DOQA_CASE_IDS = os.getenv("DOQA_CASE_IDS", "")
 DOQA_FILE = os.getenv("DOQA_FILE", "")
+DOQA_EXPORT_MODE = os.getenv("DOQA_EXPORT_MODE", "status_hour").lower()
+DOQA_CUSTOM_STATUSES = os.getenv("DOQA_CUSTOM_STATUSES", "review,error,draft")
 
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
@@ -155,6 +161,98 @@ def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict
     result = list(cases.values())
     print(f"  ✓ Загружено кейсов: {len(result)}")
     return result
+
+
+# ── 3. Экспорт тест-кейсов через API DoQA ────────────────────
+def get_cases_from_export(space_id: str, export_mode: str) -> list[dict]:
+    """
+    Экспорт тест-кейсов через POST /api/cases/export.
+    
+    Подварианты фильтрации (export_mode):
+      all           — все кейсы из пространства
+      status        — кейсы со статусами review/error/draft
+      status_hour   — статусы review/error/draft + изменённые за последний час
+      status_day    — статусы review/error/draft + изменённые за последние сутки
+      custom_status — кейсы с выбором статуса (из DOQA_CUSTOM_STATUSES)
+    """
+    if not DOQA_TOKEN:
+        sys.exit("ОШИБКА: Не указан DOQA_API_TOKEN в .env")
+    
+    headers = {
+        "Authorization": f"Bearer {DOQA_TOKEN}",
+        "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+    
+    # Формируем тело запроса в зависимости от режима
+    body = {"spaceId": space_id}
+    
+    # Определяем фильтры
+    if export_mode == "all":
+        print(f"  → Экспорт всех кейсов из пространства {space_id}")
+        
+    elif export_mode == "status":
+        body["status"] = ["review", "error", "draft"]
+        print(f"  → Экспорт кейсов со статусами: review, error, draft")
+        
+    elif export_mode == "status_hour":
+        body["status"] = ["review", "error", "draft"]
+        body["modifiedAfter"] = _get_timestamp(hours_ago=1)
+        print(f"  → Экспорт кейсов со статусами: review, error, draft")
+        print(f"    Изменённые за последний час")
+        
+    elif export_mode == "status_day":
+        body["status"] = ["review", "error", "draft"]
+        body["modifiedAfter"] = _get_timestamp(hours_ago=24)
+        print(f"  → Экспорт кейсов со статусами: review, error, draft")
+        print(f"    Изменённые за последние сутки")
+        
+    elif export_mode == "custom_status":
+        statuses = [s.strip() for s in DOQA_CUSTOM_STATUSES.split(",") if s.strip()]
+        if not statuses:
+            sys.exit("ОШИБКА: DOQA_EXPORT_MODE=custom_status, но DOQA_CUSTOM_STATUSES пуст в .env")
+        body["status"] = statuses
+        print(f"  → Экспорт кейсов со статусами: {', '.join(statuses)}")
+        
+    else:
+        sys.exit(
+            f"ОШИБКА: Неверное значение DOQA_EXPORT_MODE='{export_mode}' в .env\n"
+            "  Допустимые значения: all, status, status_hour, status_day, custom_status"
+        )
+    
+    # Отправляем запрос на экспорт
+    url = f"{DOQA_BASE_URL}/api/cases/export"
+    print(f"  → POST {url}")
+    
+    try:
+        r = requests.post(url, headers=headers, json=body, timeout=300)
+        r.raise_for_status()
+        
+        # Сохраняем xlsx во временный файл
+        temp_file = f"_temp_export_{space_id}.xlsx"
+        with open(temp_file, "wb") as f:
+            f.write(r.content)
+        
+        print(f"  ✓ Экспорт получен ({len(r.content)} байт)")
+        
+        # Парсим xlsx через существующую функцию
+        cases = get_cases_from_file(temp_file, None)
+        
+        # Удаляем временный файл
+        os.remove(temp_file)
+        
+        return cases
+        
+    except requests.HTTPError as e:
+        sys.exit(f"ОШИБКА: HTTP {r.status_code} при экспорте: {r.text[:500]}")
+    except Exception as e:
+        sys.exit(f"ОШИБКА: {e}")
+
+
+def _get_timestamp(hours_ago: int) -> str:
+    """Возвращает ISO-8601 timestamp для N часов назад."""
+    from datetime import timedelta
+    dt = datetime.now() - timedelta(hours=hours_ago)
+    return dt.isoformat()
 
 
 # ── 3. Работа с ИИ ───────────────────────────────────────────
@@ -345,6 +443,16 @@ def main():
             print(f"    Фильтр по кейсам: {ids}")
         cases = get_cases_from_file(DOQA_FILE, ids)
         
+    elif DOQA_MODE == "export":
+        # Режим экспорта: требуется spaceId
+        if not DOQA_SPACE_ID:
+            sys.exit("ОШИБКА: DOQA_MODE=export, но не указан DOQA_SPACE_ID в .env")
+        
+        print(f"\n[1] Режим: Экспорт из DoQA")
+        print(f"    Пространство: {DOQA_SPACE_ID}")
+        print(f"    Подвариант: {DOQA_EXPORT_MODE}")
+        cases = get_cases_from_export(DOQA_SPACE_ID, DOQA_EXPORT_MODE)
+        
     elif DOQA_MODE == "":
         # Автоопределение (для обратной совместимости)
         if DOQA_FILE:
@@ -357,17 +465,23 @@ def main():
             print(f"    Пространство: {DOQA_SPACE_ID}")
             ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
             cases = get_cases_from_api(DOQA_SPACE_ID, ids)
+        elif DOQA_SPACE_ID:
+            print(f"\n[1] Режим: Экспорт из DoQA (авто)")
+            print(f"    Пространство: {DOQA_SPACE_ID}")
+            print(f"    Подвариант: {DOQA_EXPORT_MODE}")
+            cases = get_cases_from_export(DOQA_SPACE_ID, DOQA_EXPORT_MODE)
         else:
             sys.exit(
                 "ОШИБКА: Не указан DOQA_MODE в .env.\n"
-                "  Укажите DOQA_MODE=api или DOQA_MODE=file\n"
+                "  Укажите DOQA_MODE=api, file или export\n"
                 "  Для api: заполните DOQA_SPACE_ID и DOQA_CASE_IDS\n"
-                "  Для file: заполните DOQA_FILE"
+                "  Для file: заполните DOQA_FILE\n"
+                "  Для export: заполните DOQA_SPACE_ID"
             )
     else:
         sys.exit(
             f"ОШИБКА: Неверное значение DOQA_MODE='{DOQA_MODE}' в .env\n"
-            "  Допустимые значения: api или file"
+            "  Допустимые значения: api, file или export"
         )
 
     if not cases:
