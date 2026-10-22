@@ -8,12 +8,12 @@ DoQA 4.3.1 | Эндпоинт: GET /api/cases/{caseId}
 
 import os
 import sys
-import time
 import requests
 import openpyxl
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError, APIStatusError
 
 # ── Загрузка .env ────────────────────────────────────────────
 _env_path = Path(__file__).parent / ".env"
@@ -26,12 +26,11 @@ DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
 DOQA_CASE_IDS = os.getenv("DOQA_CASE_IDS", "")
 DOQA_FILE = os.getenv("DOQA_FILE", "")
 
-AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1/chat/completions")
+AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
 AI_TIMEOUT = int(os.getenv("AI_TIMEOUT", "120"))
 AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
-AI_RETRY_DELAY = int(os.getenv("AI_RETRY_DELAY", "5"))
 
 PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
 RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
@@ -186,114 +185,85 @@ def _format_case(c: dict) -> str:
 
 def review_case(case: dict, prompt: str, rules: str) -> str:
     """
-    Отправка одного тест-кейса в ИИ на ревью.
-    Реализует retry-логику: при таймауте или ошибке повторяет запрос.
-    Ждет полный ответ от ИИ перед обработкой.
+    Отправка одного тест-кейса в ИИ на ревью через OpenAI SDK.
+    SDK автоматически управляет retry при временных ошибках.
+    Ждёт полный ответ от ИИ перед обработкой.
     """
     if not AI_API_KEY:
         return "ОШИБКА: Не указан AI_API_KEY в .env"
 
     body = f"{prompt}\n\n=== ПРАВИЛА ПРОВЕРКИ ===\n{rules}\n\n=== ТЕСТ-КЕЙС ===\n{_format_case(case)}"
 
-    headers = {
-        "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": AI_MODEL,
-        "messages": [
-            {"role": "system", "content": "Ты — опытный QA-инженер. Отвечай на русском языке."},
-            {"role": "user", "content": body},
-        ],
-        "temperature": 0.3,
-        "max_tokens": 4000,
-    }
+    # Создаём клиент OpenAI (работает с любым OpenAI-совместимым API)
+    client = OpenAI(
+        api_key=AI_API_KEY,
+        base_url=AI_BASE_URL,
+        timeout=AI_TIMEOUT,
+        max_retries=AI_MAX_RETRIES,
+    )
 
-    max_retries = AI_MAX_RETRIES
-    retry_delay = AI_RETRY_DELAY
+    try:
+        print(f"      Отправка запроса в {AI_MODEL}...")
 
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"      Попытка {attempt}/{max_retries}...")
-            
-            # Отправляем запрос и ждем полный ответ
-            r = requests.post(
-                AI_API_URL, 
-                headers=headers, 
-                json=payload, 
-                timeout=AI_TIMEOUT
-            )
-            
-            # Проверяем статус ответа
-            r.raise_for_status()
-            
-            # Парсим JSON ответ
-            response_data = r.json()
-            
-            # Проверяем структуру ответа
-            if "choices" not in response_data or len(response_data["choices"]) == 0:
-                raise ValueError("Некорректная структура ответа ИИ: отсутствует поле 'choices'")
-            
-            # Извлекаем контент ответа
-            content = response_data["choices"][0].get("message", {}).get("content", "")
-            
-            if not content:
-                raise ValueError("Пустой ответ от ИИ")
-            
-            # Успех — возвращаем полный ответ
-            print(f"      ✓ Ответ получен ({len(content)} символов)")
-            return content
+        # SDK ждёт полный ответ (не стриминг)
+        response = client.chat.completions.create(
+            model=AI_MODEL,
+            messages=[
+                {"role": "system", "content": "Ты — опытный QA-инженер. Отвечай на русском языке."},
+                {"role": "user", "content": body},
+            ],
+            temperature=0.3,
+            max_tokens=4000,
+        )
 
-        except requests.exceptions.Timeout:
-            error_msg = f"Таймаут ({AI_TIMEOUT}с)"
-            print(f"      ✗ {error_msg}")
-            if attempt < max_retries:
-                print(f"      Повтор через {retry_delay}с...")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # экспоненциальная задержка
-            else:
-                return f"ОШИБКА: Превышено время ожидания ответа от ИИ после {max_retries} попыток"
+        # Проверяем, что ответ пришёл
+        if not response.choices or len(response.choices) == 0:
+            return "ОШИБКА: Пустой ответ от ИИ (нет choices)"
 
-        except requests.exceptions.HTTPError as e:
-            status = r.status_code
-            error_text = r.text[:300] if r.text else str(e)
-            
-            # Для 4xx ошибок не повторяем (клиентская ошибка)
-            if 400 <= status < 500:
-                return f"ОШИБКА HTTP {status}: {error_text}"
-            
-            # Для 5xx ошибок повторяем (серверная ошибка)
-            print(f"      ✗ HTTP {status}: {error_text[:100]}")
-            if attempt < max_retries:
-                print(f"      Повтор через {retry_delay}с...")
-                time.sleep(retry_delay)
-                retry_delay *= 2
-            else:
-                return f"ОШИБКА: Сервер ИИ вернул ошибку {status} после {max_retries} попыток"
+        content = response.choices[0].message.content or ""
+        if not content:
+            return "ОШИБКА: Пустой контент в ответе ИИ"
 
-        except requests.exceptions.ConnectionError as e:
-            print(f"      ✗ Ошибка соединения: {str(e)[:100]}")
-            if attempt < max_retries:
-                print(f"      Повтор через {retry_delay}с...")
-                time.sleep(retry_delay)
-                retry_delay *= 2
-            else:
-                return f"ОШИБКА: Не удалось подключиться к ИИ API после {max_retries} попыток"
+        # Показываем причину завершения
+        finish_reason = response.choices[0].finish_reason
+        if finish_reason == "length":
+            print(f"      ⚠ Ответ обрезан (достигнут лимит токенов)")
+        elif finish_reason == "content_filter":
+            print(f"      ⚠ Ответ заблокирован контент-фильтром")
 
-        except (ValueError, KeyError) as e:
-            # Ошибки парсинга ответа — не повторяем
-            return f"ОШИБКА: Некорректный ответ от ИИ: {e}"
+        # Информация о токенах
+        if response.usage:
+            print(f"      ✓ Ответ получен: {len(content)} символов, "
+                  f"токенов: {response.usage.prompt_tokens}→{response.usage.completion_tokens}")
+        else:
+            print(f"      ✓ Ответ получен: {len(content)} символов")
 
-        except Exception as e:
-            print(f"      ✗ Непредвиденная ошибка: {e}")
-            if attempt < max_retries:
-                print(f"      Повтор через {retry_delay}с...")
-                time.sleep(retry_delay)
-                retry_delay *= 2
-            else:
-                return f"ОШИБКА: {e}"
+        return content
 
-    return "ОШИБКА: Не удалось получить ответ от ИИ"
+    except APITimeoutError:
+        return f"ОШИБКА: Таймаут ({AI_TIMEOUT}с) после {AI_MAX_RETRIES} попыток. Увеличьте AI_TIMEOUT в .env"
+
+    except APIConnectionError:
+        return f"ОШИБКА: Не удалось подключиться к {AI_BASE_URL}. Проверьте URL и интернет-соединение"
+
+    except RateLimitError as e:
+        return f"ОШИБКА: Превышен лимит запросов. Подождите и попробуйте снова. {e}"
+
+    except APIStatusError as e:
+        if e.status_code == 401:
+            return f"ОШИБКА: Неверный API-ключ. Проверьте AI_API_KEY в .env"
+        elif e.status_code == 404:
+            return (f"ОШИБКА: Эндпоинт или модель не найдены (404).\n"
+                    f"  URL: {AI_BASE_URL}\n"
+                    f"  Модель: {AI_MODEL}\n"
+                    f"  Проверьте правильность AI_BASE_URL и AI_MODEL в .env")
+        elif e.status_code == 429:
+            return f"ОШИБКА: Превышен лимит запросов или квота. {e}"
+        else:
+            return f"ОШИБКА API (HTTP {e.status_code}): {e.message}"
+
+    except Exception as e:
+        return f"ОШИБКА: {type(e).__name__}: {e}"
 
 
 # ── 4. Сохранение результата ─────────────────────────────────
@@ -317,7 +287,7 @@ def main():
     print("  DoQA Review Tool — ревью тест-кейсов с ИИ")
     print("=" * 60)
     print(f"  .env: {_env_path if _env_path.exists() else '(не найден, используются переменные окружения)'}")
-    print(f"  AI: {AI_MODEL} @ {AI_API_URL}")
+    print(f"  AI: {AI_MODEL} @ {AI_BASE_URL}")
 
     # Определяем источник
     if DOQA_FILE:

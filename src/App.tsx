@@ -107,16 +107,15 @@ function Setup() {
         <h3 className="font-semibold text-lg mb-3">2. Создание .env</h3>
         <Code>{`cp .env.example .env`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима файла:</p>
-        <Code lang="env">{`DOQA_MODE=file
-DOQA_FILE=export.xlsx
-AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+        <Code lang="env">{`DOQA_FILE=export.xlsx
+AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
         <Code lang="env">{`DOQA_SPACE_ID=123
 DOQA_CASE_IDS=456,789,101
 DOQA_API_TOKEN=your_doqa_token
-AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
       </div>
@@ -169,12 +168,11 @@ AI_MODEL=qwen3.8-max`}</Code>
                 ['DOQA_SPACE_ID', 'ID пространства (для режима API)'],
                 ['DOQA_CASE_IDS', 'ID кейсов через запятую'],
                 ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима файла)'],
-                ['AI_API_URL', 'URL API провайдера ИИ'],
+                ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
                 ['AI_TIMEOUT', 'Таймаут ожидания ответа ИИ в секундах (по умолчанию 120)'],
-                ['AI_MAX_RETRIES', 'Максимум попыток при ошибке (по умолчанию 3)'],
-                ['AI_RETRY_DELAY', 'Начальная задержка между попытками в секундах (по умолчанию 5, удваивается)'],
+                ['AI_MAX_RETRIES', 'Максимум попыток при ошибке (по умолчанию 3, управляется OpenAI SDK)'],
                 ['PROMPT_FILE', 'Путь к файлу с промтом'],
                 ['RULES_FILE', 'Путь к файлу с правилами'],
                 ['OUTPUT_DIR', 'Директория для результатов'],
