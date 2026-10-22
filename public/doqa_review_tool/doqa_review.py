@@ -31,6 +31,7 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
 AI_TIMEOUT = int(os.getenv("AI_TIMEOUT", "120"))
 AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
+AI_ENABLE_THINKING = os.getenv("AI_ENABLE_THINKING", "false").lower() == "true"
 
 PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
 RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
@@ -205,6 +206,15 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
     try:
         print(f"      Отправка запроса в {AI_MODEL}...")
 
+        # Формируем дополнительные параметры для модели
+        extra = {}
+        # Для Qwen3: режим "thinking" управляет тем, куда идёт ответ
+        # (в content или в reasoning_content). Для других моделей игнорируется.
+        if "qwen" in AI_MODEL.lower():
+            extra["extra_body"] = {"enable_thinking": AI_ENABLE_THINKING}
+            if AI_ENABLE_THINKING:
+                print(f"      ℹ Режим thinking включён (ответ будет в reasoning_content)")
+
         # SDK ждёт полный ответ (не стриминг)
         response = client.chat.completions.create(
             model=AI_MODEL,
@@ -214,18 +224,40 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
             ],
             temperature=0.3,
             max_tokens=4000,
+            **extra,
         )
 
         # Проверяем, что ответ пришёл
         if not response.choices or len(response.choices) == 0:
             return "ОШИБКА: Пустой ответ от ИИ (нет choices)"
 
-        content = response.choices[0].message.content or ""
+        choice = response.choices[0]
+        message = choice.message
+
+        # Извлекаем контент — проверяем несколько возможных полей
+        # Qwen3 в thinking-режиме кладёт ответ в reasoning_content
+        content = (
+            getattr(message, "content", None)
+            or getattr(message, "reasoning_content", None)
+            or ""
+        )
+
+        # Если всё ещё пусто — выводим диагностику
         if not content:
-            return "ОШИБКА: Пустой контент в ответе ИИ"
+            debug_info = f"ОШИБКА: Пустой контент в ответе ИИ.\n"
+            debug_info += f"  Модель: {AI_MODEL}\n"
+            debug_info += f"  finish_reason: {choice.finish_reason}\n"
+            debug_info += f"  Поля message: {[k for k in dir(message) if not k.startswith('_')]}\n"
+            # Попробуем извлечь что-нибудь из message
+            try:
+                msg_dict = message.model_dump() if hasattr(message, "model_dump") else str(message)
+                debug_info += f"  Содержимое message: {str(msg_dict)[:500]}"
+            except Exception:
+                debug_info += f"  message (repr): {repr(message)[:500]}"
+            return debug_info
 
         # Показываем причину завершения
-        finish_reason = response.choices[0].finish_reason
+        finish_reason = choice.finish_reason
         if finish_reason == "length":
             print(f"      ⚠ Ответ обрезан (достигнут лимит токенов)")
         elif finish_reason == "content_filter":
