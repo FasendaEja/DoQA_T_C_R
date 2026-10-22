@@ -8,6 +8,7 @@ DoQA 4.3.1 | Эндпоинт: GET /api/cases/{caseId}
 
 import os
 import sys
+import time
 import requests
 import openpyxl
 from datetime import datetime
@@ -29,6 +30,8 @@ AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1/chat/completions
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
 AI_TIMEOUT = int(os.getenv("AI_TIMEOUT", "120"))
+AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
+AI_RETRY_DELAY = int(os.getenv("AI_RETRY_DELAY", "5"))
 
 PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
 RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
@@ -182,7 +185,11 @@ def _format_case(c: dict) -> str:
 
 
 def review_case(case: dict, prompt: str, rules: str) -> str:
-    """Отправка одного тест-кейса в ИИ на ревью."""
+    """
+    Отправка одного тест-кейса в ИИ на ревью.
+    Реализует retry-логику: при таймауте или ошибке повторяет запрос.
+    Ждет полный ответ от ИИ перед обработкой.
+    """
     if not AI_API_KEY:
         return "ОШИБКА: Не указан AI_API_KEY в .env"
 
@@ -202,14 +209,91 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
         "max_tokens": 4000,
     }
 
-    try:
-        r = requests.post(AI_API_URL, headers=headers, json=payload, timeout=AI_TIMEOUT)
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
-    except requests.HTTPError:
-        return f"HTTP ошибка {r.status_code}: {r.text[:500]}"
-    except Exception as e:
-        return f"Ошибка: {e}"
+    max_retries = AI_MAX_RETRIES
+    retry_delay = AI_RETRY_DELAY
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"      Попытка {attempt}/{max_retries}...")
+            
+            # Отправляем запрос и ждем полный ответ
+            r = requests.post(
+                AI_API_URL, 
+                headers=headers, 
+                json=payload, 
+                timeout=AI_TIMEOUT
+            )
+            
+            # Проверяем статус ответа
+            r.raise_for_status()
+            
+            # Парсим JSON ответ
+            response_data = r.json()
+            
+            # Проверяем структуру ответа
+            if "choices" not in response_data or len(response_data["choices"]) == 0:
+                raise ValueError("Некорректная структура ответа ИИ: отсутствует поле 'choices'")
+            
+            # Извлекаем контент ответа
+            content = response_data["choices"][0].get("message", {}).get("content", "")
+            
+            if not content:
+                raise ValueError("Пустой ответ от ИИ")
+            
+            # Успех — возвращаем полный ответ
+            print(f"      ✓ Ответ получен ({len(content)} символов)")
+            return content
+
+        except requests.exceptions.Timeout:
+            error_msg = f"Таймаут ({AI_TIMEOUT}с)"
+            print(f"      ✗ {error_msg}")
+            if attempt < max_retries:
+                print(f"      Повтор через {retry_delay}с...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # экспоненциальная задержка
+            else:
+                return f"ОШИБКА: Превышено время ожидания ответа от ИИ после {max_retries} попыток"
+
+        except requests.exceptions.HTTPError as e:
+            status = r.status_code
+            error_text = r.text[:300] if r.text else str(e)
+            
+            # Для 4xx ошибок не повторяем (клиентская ошибка)
+            if 400 <= status < 500:
+                return f"ОШИБКА HTTP {status}: {error_text}"
+            
+            # Для 5xx ошибок повторяем (серверная ошибка)
+            print(f"      ✗ HTTP {status}: {error_text[:100]}")
+            if attempt < max_retries:
+                print(f"      Повтор через {retry_delay}с...")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                return f"ОШИБКА: Сервер ИИ вернул ошибку {status} после {max_retries} попыток"
+
+        except requests.exceptions.ConnectionError as e:
+            print(f"      ✗ Ошибка соединения: {str(e)[:100]}")
+            if attempt < max_retries:
+                print(f"      Повтор через {retry_delay}с...")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                return f"ОШИБКА: Не удалось подключиться к ИИ API после {max_retries} попыток"
+
+        except (ValueError, KeyError) as e:
+            # Ошибки парсинга ответа — не повторяем
+            return f"ОШИБКА: Некорректный ответ от ИИ: {e}"
+
+        except Exception as e:
+            print(f"      ✗ Непредвиденная ошибка: {e}")
+            if attempt < max_retries:
+                print(f"      Повтор через {retry_delay}с...")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                return f"ОШИБКА: {e}"
+
+    return "ОШИБКА: Не удалось получить ответ от ИИ"
 
 
 # ── 4. Сохранение результата ─────────────────────────────────
