@@ -1,25 +1,9 @@
-# Файл с реальными секретами — НЕ коммитить!
 .env
-
-# Результаты ревью
 review_results/
-
-# Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
+.venv/
 venv/
-env/
-ENV/
-
-# IDE
 .idea/
 .vscode/
-*.swp
-*.swo
-
-# OS
 .DS_Store
-Thumbs.db
