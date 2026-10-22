@@ -1,521 +1,294 @@
 import { useState } from 'react';
 
-type TabId = 'overview' | 'install' | 'usage' | 'files' | 'api' | 'notes';
+type TabId = 'overview' | 'setup' | 'usage' | 'api' | 'files';
 
-interface Tab {
-  id: TabId;
-  label: string;
-  icon: string;
-}
-
-const tabs: Tab[] = [
+const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: '📋' },
-  { id: 'install', label: 'Установка', icon: '⚙️' },
-  { id: 'usage', label: 'Использование', icon: '🚀' },
-  { id: 'files', label: 'Структура', icon: '📁' },
+  { id: 'setup', label: 'Настройка', icon: '⚙️' },
+  { id: 'usage', label: 'Запуск', icon: '🚀' },
   { id: 'api', label: 'API DoQA', icon: '🔌' },
-  { id: 'notes', label: 'Важные замечания', icon: '⚠️' },
+  { id: 'files', label: 'Структура', icon: '📁' },
 ];
 
-function CodeBlock({ children, language = 'bash' }: { children: string; language?: string }) {
+function Code({ children, lang = 'bash' }: { children: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
+  const copy = () => {
     navigator.clipboard.writeText(children);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1500);
   };
-
   return (
-    <div className="relative group my-4">
+    <div className="relative group my-3">
       <div className="absolute top-2 right-2 flex items-center gap-2">
-        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">{language}</span>
+        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">{lang}</span>
         <button
-          onClick={handleCopy}
-          className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition-colors"
+          onClick={copy}
+          className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded"
         >
-          {copied ? '✓ Скопировано' : '📋 Копировать'}
+          {copied ? '✓' : '📋'}
         </button>
       </div>
-      <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 pt-10 overflow-x-auto text-sm leading-relaxed">
+      <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 pt-9 overflow-x-auto text-sm leading-relaxed">
         <code>{children}</code>
       </pre>
     </div>
   );
 }
 
-function OverviewTab() {
+function Overview() {
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-3">
-          🤖 Утилита ревью тест-кейсов DoQA с использованием ИИ
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          🤖 DoQA Review Tool
         </h2>
-        <p className="text-gray-600 text-lg">
-          Python-утилита для автоматической проверки тест-кейсов из TMS DoQA (версия 4.3.1)
-          на соответствие правилам качества и правилам русского языка.
+        <p className="text-gray-600">
+          Python-утилита для автоматического ревью тест-кейсов DoQA 4.3.1 с использованием ИИ.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold text-lg text-gray-800 mb-2">📥 Получение тест-кейсов</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h3 className="font-semibold text-lg mb-3">📥 Источник тест-кейсов</h3>
           <ul className="space-y-2 text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Через <strong>публичный API DoQA</strong> (по spaceId и ID кейсов)</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Из <strong>файла экспорта DoQA</strong> (формат xlsx)</span>
-            </li>
+            <li>✓ Через API DoQA: <code className="bg-gray-100 px-1 rounded text-sm">GET /api/cases/{'{caseId}'}</code></li>
+            <li>✓ Из файла экспорта DoQA (xlsx)</li>
           </ul>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold text-lg text-gray-800 mb-2">🧠 Анализ с помощью ИИ</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h3 className="font-semibold text-lg mb-3">🧠 Анализ ИИ</h3>
           <ul className="space-y-2 text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Каждый кейс отправляется <strong>отдельно</strong></span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Промт хранится в <strong>редактируемом файле</strong></span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Поддержка <strong>OpenAI-совместимых API</strong></span>
-            </li>
+            <li>✓ Каждый кейс — отдельный запрос</li>
+            <li>✓ Промт в редактируемом файле</li>
+            <li>✓ Qwen3.8 / OpenAI / другие</li>
           </ul>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold text-lg text-gray-800 mb-2">📄 Результаты</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h3 className="font-semibold text-lg mb-3">📄 Результаты</h3>
           <ul className="space-y-2 text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Отдельный файл для каждого кейса</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Формат: <code className="bg-gray-100 px-1 rounded text-sm">Ревью кейса_&lt;id&gt;_&lt;дата_время&gt;.txt</code></span>
-            </li>
+            <li>✓ Отдельный файл для каждого кейса</li>
+            <li>✓ Формат: <code className="bg-gray-100 px-1 rounded text-sm">Ревью кейса_{'<id>'}_{'<дата>'}.txt</code></li>
           </ul>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-          <h3 className="font-semibold text-lg text-gray-800 mb-2">📐 Правила проверки</h3>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h3 className="font-semibold text-lg mb-3">⚙️ Конфигурация</h3>
           <ul className="space-y-2 text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Структура тест-кейса</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Качество шагов и ожидаемых результатов</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-500 mt-1">✓</span>
-              <span>Правила русского языка</span>
-            </li>
+            <li>✓ Все параметры из <code className="bg-gray-100 px-1 rounded text-sm">.env</code></li>
+            <li>✓ Правила в отдельном файле</li>
+            <li>✓ Простой запуск одной командой</li>
           </ul>
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-        <h3 className="font-semibold text-amber-800 mb-2">⚠️ Важная информация об API DoQA</h3>
-        <p className="text-amber-700 text-sm">
-          Точные эндпоинты публичного API DoQA доступны только авторизованным пользователям
-          через Swagger UI (Профиль → Public API). URL эндпоинтов в утилите основаны на
-          документации DoQA 4.3 и типовой REST-структуре. Если эндпоинты отличаются в вашем
-          экземпляре — скорректируйте их в коде.
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <p className="text-amber-800 text-sm">
+          <strong>⚠️ Важно:</strong> Точные эндпоинты API DoQA доступны через Swagger UI
+          (Профиль → Public API). В утилите используется <code className="bg-amber-100 px-1 rounded">GET /api/cases/{'{caseId}'}</code>.
         </p>
       </div>
     </div>
   );
 }
 
-function InstallTab() {
+function Setup() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Установка</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Настройка</h2>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">1. Требования</h3>
-        <ul className="space-y-2 text-gray-600">
-          <li>• Python 3.10+</li>
-          <li>• Доступ к DoQA (облако или box-версия)</li>
-          <li>• API-ключ провайдера ИИ (OpenAI, YandexGPT, GigaChat и др.)</li>
-        </ul>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">2. Установка зависимостей</h3>
-        <CodeBlock>{`pip install -r requirements.txt`}</CodeBlock>
+        <h3 className="font-semibold text-lg mb-3">1. Установка зависимостей</h3>
+        <Code>{`pip install -r requirements.txt`}</Code>
         <p className="text-sm text-gray-500 mt-2">
-          Зависимости: <code className="bg-gray-100 px-1 rounded">requests</code>, <code className="bg-gray-100 px-1 rounded">openpyxl</code>, <code className="bg-gray-100 px-1 rounded">python-dotenv</code>
+          Зависимости: <code>requests</code>, <code>openpyxl</code>, <code>python-dotenv</code>
         </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">3. Создание файла .env</h3>
-        <p className="text-gray-600 mb-3">
-          Скопируйте шаблон <code className="bg-gray-100 px-1 rounded">.env.example</code> в <code className="bg-gray-100 px-1 rounded">.env</code> и заполните значения:
-        </p>
-        <CodeBlock>{`cp .env.example .env`}</CodeBlock>
-        <p className="text-gray-600 mb-3 mt-4">
-          Минимальный <code className="bg-gray-100 px-1 rounded">.env</code> для запуска:
-        </p>
-        <CodeBlock language="env">{`# Обязательные
-DOQA_API_TOKEN=ваш_api_токен_doqa
-AI_API_KEY=ваш_ключ_ии
-
-# Режим работы
-DOQA_MODE=file
-DOQA_FILE=export.xlsx`}</CodeBlock>
+        <h3 className="font-semibold text-lg mb-3">2. Создание .env</h3>
+        <Code>{`cp .env.example .env`}</Code>
+        <p className="text-gray-600 mt-3">Минимальный .env для режима файла:</p>
+        <Code lang="env">{`DOQA_MODE=file
+DOQA_FILE=export.xlsx
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max`}</Code>
+        <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
+        <Code lang="env">{`DOQA_SPACE_ID=123
+DOQA_CASE_IDS=456,789,101
+DOQA_API_TOKEN=your_doqa_token
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max`}</Code>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">4. Альтернатива: переменные окружения</h3>
-        <p className="text-gray-600 mb-3">
-          Если не хотите использовать .env, можно задать переменные напрямую:
-        </p>
-        <CodeBlock>{`# Linux / macOS
-export DOQA_API_TOKEN="ваш_api_токен_doqa"
-export AI_API_KEY="ваш_ключ_ии"
-export DOQA_MODE="file"
-export DOQA_FILE="export.xlsx"
-
-# Windows (PowerShell)
-$env:DOQA_API_TOKEN="ваш_api_токен_doqa"
-$env:AI_API_KEY="ваш_ключ_ии"`}</CodeBlock>
-        <p className="text-sm text-gray-500 mt-2">
-          ⚡ CLI-аргументы имеют наивысший приоритет и переопределяют .env
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">5. Получение API-токена DoQA</h3>
+        <h3 className="font-semibold text-lg mb-3">3. Получение API-токена DoQA</h3>
         <ol className="space-y-2 text-gray-600 list-decimal list-inside">
           <li>Войдите в DoQA</li>
-          <li>Нажмите на своё имя в правом верхнем углу</li>
-          <li>Выберите «<strong>Профиль</strong>»</li>
-          <li>Откройте раздел «<strong>API-токены</strong>»</li>
-          <li>Нажмите «<strong>Создать API-токен</strong>»</li>
+          <li>Имя в правом верхнем углу → <strong>Профиль</strong></li>
+          <li>Раздел <strong>API-токены</strong> → <strong>Создать API-токен</strong></li>
           <li>Скопируйте значение (показывается один раз!)</li>
+        </ol>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">4. Получение API-ключа Qwen3.8</h3>
+        <ol className="space-y-2 text-gray-600 list-decimal list-inside">
+          <li>
+            Войдите в{' '}
+            <a href="https://modelstudio.console.alibabacloud.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              Alibaba Cloud Model Studio
+            </a>
+          </li>
+          <li>Скопируйте <strong>Workspace ID</strong> со страницы рабочего пространства</li>
+          <li>
+            Откройте{' '}
+            <a href="https://modelstudio.console.alibabacloud.com/model/settings/api-key" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              API Key Management
+            </a>{' '}
+            и создайте ключ
+          </li>
+          <li>Замените <code className="bg-gray-100 px-1 rounded">{'{WorkspaceId}'}</code> в URL на реальный ID</li>
+        </ol>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Все параметры .env</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-200 px-3 py-2 text-left">Переменная</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['DOQA_BASE_URL', 'URL DoQA (по умолчанию https://app.doqa.app)'],
+                ['DOQA_API_TOKEN', 'API-токен DoQA'],
+                ['DOQA_SPACE_ID', 'ID пространства (для режима API)'],
+                ['DOQA_CASE_IDS', 'ID кейсов через запятую'],
+                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима файла)'],
+                ['AI_API_URL', 'URL API провайдера ИИ'],
+                ['AI_API_KEY', 'API-ключ провайдера ИИ'],
+                ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
+                ['PROMPT_FILE', 'Путь к файлу с промтом'],
+                ['RULES_FILE', 'Путь к файлу с правилами'],
+                ['OUTPUT_DIR', 'Директория для результатов'],
+              ].map(([k, v]) => (
+                <tr key={k} className="hover:bg-gray-50">
+                  <td className="border border-gray-200 px-3 py-1.5 font-mono text-xs">{k}</td>
+                  <td className="border border-gray-200 px-3 py-1.5">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Usage() {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800">Запуск</h2>
+
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-2">✨ Простой запуск</h3>
+        <p className="text-gray-600 mb-3">
+          Все параметры в <code className="bg-white px-1 rounded">.env</code> — просто запустите:
+        </p>
+        <Code>{`python doqa_review.py`}</Code>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Как это работает</h3>
+        <ol className="space-y-3 text-gray-600 list-decimal list-inside">
+          <li>
+            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов:
+            <ul className="ml-6 mt-1 list-disc text-sm">
+              <li>Если указан <code>DOQA_FILE</code> — загружает из xlsx</li>
+              <li>Если указаны <code>DOQA_SPACE_ID</code> + <code>DOQA_CASE_IDS</code> — через API</li>
+            </ul>
+          </li>
+          <li>
+            Загружает промт из <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и правила из <code className="bg-gray-100 px-1 rounded">DoQA_test_case_review_rules_.txt</code>
+          </li>
+          <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
+          <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
+        </ol>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Редактирование промта</h3>
+        <p className="text-gray-600 mb-3">
+          Промт хранится в файле <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и перечитывается при каждом запуске.
+          Просто отредактируйте файл — изменения применятся автоматически.
+        </p>
+        <Code lang="text">{`Проверь тест-кейсы на соответствие правилам из файла
+"DoQA_test_case_review_rules_" и правилам русского языка.
+
+Результат выдавай по каждому кейсу отдельно.
+Явно указывай в каком шаге ошибка.`}</Code>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Запуск в PyCharm</h3>
+        <ol className="space-y-2 text-gray-600 list-decimal list-inside">
+          <li>Откройте папку <code className="bg-gray-100 px-1 rounded">doqa_review_tool/</code> как проект</li>
+          <li>Настройте интерпретатор Python (File → Settings → Python Interpreter)</li>
+          <li>Установите зависимости: <code className="bg-gray-100 px-1 rounded">pip install -r requirements.txt</code></li>
+          <li>Создайте <code className="bg-gray-100 px-1 rounded">.env</code> из <code className="bg-gray-100 px-1 rounded">.env.example</code></li>
+          <li>Run → Edit Configurations → Python → Script: <code className="bg-gray-100 px-1 rounded">doqa_review.py</code></li>
+          <li>Parameters: оставьте пустыми (всё в .env)</li>
+          <li>Запуск: <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F9</kbd> (Debug) или <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F10</kbd> (Run)</li>
         </ol>
       </div>
     </div>
   );
 }
 
-function UsageTab() {
+function Api() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Использование</h2>
-
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-sm">✨ Просто</span>
-          Запуск только по .env (без аргументов)
-        </h3>
-        <p className="text-gray-600 mb-3">
-          Если все параметры указаны в <code className="bg-white px-1 rounded">.env</code>, просто запустите:
-        </p>
-        <CodeBlock>{`python doqa_review.py`}</CodeBlock>
-        <p className="text-sm text-gray-500 mt-2">
-          Утилита автоматически прочитает <code className="bg-white px-1 rounded">.env</code> из директории скрипта
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Приоритет параметров</h3>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">1</span>
-            <span className="text-gray-700">Аргументы командной строки (<code className="bg-gray-100 px-1 rounded text-sm">--mode</code>, <code className="bg-gray-100 px-1 rounded text-sm">--space-id</code>, ...)</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">2</span>
-            <span className="text-gray-700">Переменные окружения (экспортированные в shell)</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">3</span>
-            <span className="text-gray-700">Файл <code className="bg-gray-100 px-1 rounded text-sm">.env</code></span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">4</span>
-            <span className="text-gray-700">Значения по умолчанию</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">Режим 1</span>
-          Получение кейсов через API DoQA
-        </h3>
-        <CodeBlock>{`# Через .env (DOQA_MODE=api в .env)
-python doqa_review.py
-
-# Переопределить через CLI
-python doqa_review.py --mode api --space-id 123 --case-ids 456,789,101
-
-# С явным указанием токенов (переопределяет .env)
-python doqa_review.py \\
-  --mode api \\
-  --space-id 123 \\
-  --case-ids 456,789 \\
-  --token "ваш_токен_doqa" \\
-  --ai-key "ваш_ключ_ии"
-
-# С кастомным URL DoQA (для box-версии)
-python doqa_review.py \\
-  --mode api \\
-  --base-url "https://doqa.your-company.com" \\
-  --space-id 123 \\
-  --case-ids 456,789`}</CodeBlock>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
-          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-sm">Режим 2</span>
-          Получение кейсов из файла экспорта DoQA
-        </h3>
-        <CodeBlock>{`# Через .env (DOQA_MODE=file, DOQA_FILE=export.xlsx)
-python doqa_review.py
-
-# Переопределить через CLI
-python doqa_review.py --mode file --file export.xlsx --case-ids 456,789
-
-# Все кейсы из файла
-python doqa_review.py --mode file --file export.xlsx
-
-# С указанием кастомного промта и правил
-python doqa_review.py \\
-  --mode file \\
-  --file export.xlsx \\
-  --prompt-file my_prompt.txt \\
-  --rules-file my_rules.txt`}</CodeBlock>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Показать текущую конфигурацию</h3>
-        <CodeBlock>{`python doqa_review.py --show-config`}</CodeBlock>
-        <p className="text-sm text-gray-500 mt-2">
-          Показывает все параметры из .env и CLI без запуска ревью
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Использование с Qwen3.8 (Alibaba Cloud)</h3>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <h4 className="font-semibold text-blue-800 mb-2">📝 Настройка .env для Qwen3.8:</h4>
-          <CodeBlock language="env">{`# ВАЖНО: замените {WorkspaceId} на ваш реальный ID
-AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
-AI_API_KEY=sk-xxxxxxxxxxxxxxxx
-AI_MODEL=qwen3.8-max`}</CodeBlock>
-        </div>
-        
-        <div className="space-y-3 text-gray-600">
-          <p><strong>Получение Workspace ID:</strong></p>
-          <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
-            <li>Войдите в <a href="https://modelstudio.console.alibabacloud.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">консоль Alibaba Cloud Model Studio</a></li>
-            <li>Перейдите на страницу рабочего пространства</li>
-            <li>Скопируйте Workspace ID</li>
-            <li>Замените <code className="bg-gray-100 px-1 rounded">{'{WorkspaceId}'}</code> в URL на реальный ID</li>
-          </ol>
-          
-          <p className="mt-3"><strong>Получение API-ключа:</strong></p>
-          <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
-            <li>Откройте <a href="https://modelstudio.console.alibabacloud.com/model/settings/api-key" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">страницу управления API-ключами</a></li>
-            <li>Создайте новый ключ</li>
-            <li>Скопируйте значение (начинается с <code className="bg-gray-100 px-1 rounded">sk-</code>)</li>
-          </ol>
-          
-          <p className="mt-3"><strong>Доступные модели Qwen:</strong></p>
-          <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-            <li><code className="bg-gray-100 px-1 rounded">qwen3.8-max</code> — максимальное качество</li>
-            <li><code className="bg-gray-100 px-1 rounded">qwen3.8-flash</code> — быстрая и экономичная</li>
-            <li><code className="bg-gray-100 px-1 rounded">qwen3.7-max</code>, <code className="bg-gray-100 px-1 rounded">qwen3.7-plus</code>, <code className="bg-gray-100 px-1 rounded">qwen3.7-flash</code> — предыдущие версии</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Использование с другими ИИ-провайдерами</h3>
-        <CodeBlock>{`# YandexGPT
-export AI_API_URL="https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-export AI_MODEL="yandexgpt"
-
-# GigaChat
-export AI_API_URL="https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-export AI_MODEL="GigaChat"
-
-# Любой OpenAI-совместимый API
-export AI_API_URL="https://your-provider.com/v1/chat/completions"
-export AI_MODEL="model-name"`}</CodeBlock>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Редактирование промта</h3>
-        <p className="text-gray-600 mb-3">
-          Промт хранится в файле <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и
-          перечитывается при каждом запуске утилиты. Просто отредактируйте файл — изменения
-          применятся автоматически.
-        </p>
-        <CodeBlock language="text">{`# Содержимое prompt.txt (по умолчанию):
-
-Проверь тест-кейсы на соответствие правилам из файла
-"DoQA_test_case_review_rules_" и правилам русского языка.
-
-Результат выдавай по каждому кейсу отдельно.
-Явно указывай в каком шаге ошибка.`}</CodeBlock>
-      </div>
-    </div>
-  );
-}
-
-function FilesTab() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Структура файлов</h2>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Дерево файлов</h3>
-        <CodeBlock language="text">{`doqa_review_tool/
-├── doqa_review.py                      # Основной скрипт утилиты
-├── .env                                # Ваши настройки (НЕ коммитить!)
-├── .env.example                        # Шаблон .env
-├── .gitignore                          # Исключения для git
-├── prompt.txt                          # Промт для ИИ (редактируемый)
-├── DoQA_test_case_review_rules.txt     # Правила проверки тест-кейсов
-├── requirements.txt                    # Python-зависимости
-├── README.md                           # Документация
-└── review_results/                     # Результаты (создаётся автоматически)
-    ├── Ревью кейса_456_2024-01-15_14-30-00.txt
-    └── Ревью кейса_789_2024-01-15_14-30-05.txt`}</CodeBlock>
-      </div>
-
-      <div className="bg-purple-50 border border-purple-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3 text-purple-800">📝 .env — Конфигурация</h3>
-        <p className="text-purple-700 mb-3">
-          Основной файл настроек. Создаётся из <code className="bg-purple-100 px-1 rounded">.env.example</code>.
-          Содержит все параметры: токены, URL, режим работы, пути к файлам.
-        </p>
-        <CodeBlock language="env">{`# Пример .env
-DOQA_BASE_URL=https://app.doqa.app
-DOQA_API_TOKEN=ваш_токен
-DOQA_MODE=file
-DOQA_FILE=export.xlsx
-AI_API_KEY=ваш_ключ_ии
-AI_MODEL=gpt-4o`}</CodeBlock>
-        <p className="text-sm text-purple-600 mt-2">
-          ⚠️ Файл <code className="bg-purple-100 px-1 rounded">.env</code> добавлен в .gitignore — не попадёт в репозиторий
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">📄 prompt.txt — Промт для ИИ</h3>
-        <p className="text-gray-600 mb-2">
-          Файл содержит промт, который передаётся ИИ при анализе каждого тест-кейса.
-          Перечитывается при каждом запуске — можно редактировать без перезапуска утилиты.
-        </p>
-        <p className="text-gray-600">
-          Путь к файлу можно изменить через переменную окружения <code className="bg-gray-100 px-1 rounded">PROMPT_FILE</code> или аргумент <code className="bg-gray-100 px-1 rounded">--prompt-file</code>.
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">📐 DoQA_test_case_review_rules.txt — Правила</h3>
-        <p className="text-gray-600 mb-2">
-          Файл содержит правила проверки тест-кейсов. Включает разделы:
-        </p>
-        <ul className="space-y-1 text-gray-600 ml-4">
-          <li>• Структура тест-кейса (название, описание, предусловия)</li>
-          <li>• Качество шагов (действие, ожидаемый результат)</li>
-          <li>• Тестовые данные</li>
-          <li>• Приоритет и статус</li>
-          <li>• Правила русского языка</li>
-          <li>• Полнота покрытия</li>
-        </ul>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">📊 Формат файла экспорта DoQA (xlsx)</h3>
-        <p className="text-gray-600 mb-3">
-          Файл экспорта DoQA содержит следующие колонки:
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-200 px-3 py-2 text-left">Колонка</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">Содержимое</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ['Number', 'Порядковый номер строки'],
-                ['ID', 'Идентификатор тест-кейса'],
-                ['Path', 'Путь по папкам'],
-                ['Title', 'Название'],
-                ['Priority', 'Приоритет'],
-                ['Status', 'Статус'],
-                ['Keys', 'Теги'],
-                ['Description', 'Описание'],
-                ['Preconditions', 'Предусловия'],
-                ['Postconditions', 'Постусловия'],
-                ['Step', 'Шаг'],
-                ['Expected result', 'Ожидаемый результат'],
-                ['Test data', 'Тестовые данные'],
-              ].map(([col, desc]) => (
-                <tr key={col} className="hover:bg-gray-50">
-                  <td className="border border-gray-200 px-3 py-1.5 font-mono text-xs">{col}</td>
-                  <td className="border border-gray-200 px-3 py-1.5">{desc}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-sm text-gray-500 mt-3">
-          Один тест-кейс занимает столько строк, сколько в нём шагов. Первый шаг — в строке кейса,
-          каждый последующий — в отдельной строке (колонки кейса пустые).
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ApiTab() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Работа с API DoQA</h2>
+      <h2 className="text-2xl font-bold text-gray-800">API DoQA 4.3.1</h2>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-        <h3 className="font-semibold text-blue-800 mb-2">📖 Документация API</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">📖 Документация</h3>
         <p className="text-blue-700">
-          Публичный API DoQA 4.3.1 документирован в интерактивном Swagger UI.
-          Доступ к справочнику: нажмите на своё имя → «<strong>Public API</strong>».
+          Swagger UI доступен в профиле пользователя: нажмите на имя → <strong>Public API</strong>.
+          Там же можно скачать OpenAPI 3.0 спецификацию.
         </p>
-        <p className="text-blue-700 mt-2">
-          Ссылка «Download OpenAPI Document» в Swagger отдаёт спецификацию OpenAPI 3.0,
-          которую можно использовать для генерации клиентов.
-        </p>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Эндпоинт получения тест-кейса</h3>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <code className="text-lg font-mono text-blue-700">
+            GET /api/cases/{'{caseId}'}?spaceId={'{spaceId}'}
+          </code>
+        </div>
+        <ul className="space-y-2 text-gray-600 mb-4">
+          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">caseId</code> — ID тест-кейса (в пути)</li>
+          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">spaceId</code> — ID пространства (query-параметр)</li>
+        </ul>
+        <Code>{`curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Accept: application/json"`}</Code>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
         <h3 className="font-semibold text-lg mb-3">Авторизация</h3>
-        <CodeBlock>{`Authorization: Bearer <персональный_API_токен>`}</CodeBlock>
+        <Code>{`Authorization: Bearer <персональный_API_токен>`}</Code>
         <p className="text-gray-600 text-sm mt-2">
-          Токен не привязан к сессии и не истекает. Создаётся в профиле пользователя.
-          Один пользователь может иметь до 10 токенов.
+          Токен не привязан к сессии и не истекает. Создаётся в профиле (раздел «API-токены»).
+          Лимит: до 10 токенов на пользователя.
         </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Доступные методы API</h3>
+        <h3 className="font-semibold text-lg mb-3">Доступные группы методов API</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -527,280 +300,167 @@ function ApiTab() {
             <tbody>
               {[
                 ['Авторизация', 'Получение токена по логину/паролю'],
-                ['Тест-кейсы', 'Создание, чтение, изменение, копирование, список, выгрузка в xlsx, удаление'],
-                ['Чек-листы', 'Создание, чтение, изменение, список, удаление'],
-                ['Прогоны', 'Создание, список, детали, изменение, смена статуса'],
+                ['Тест-кейсы', 'Создание, чтение, изменение, список, экспорт в xlsx'],
+                ['Чек-листы', 'Создание, чтение, изменение, список'],
+                ['Прогоны', 'Создание, список, детали, изменение статуса'],
                 ['Баги', 'Баг-репорты прогона и пространства'],
-                ['Статистика', 'Данные дашборда: артефакты, тренды, активность'],
-                ['Импорт', 'Импорт проекта и статус импорта'],
-                ['Автотесты', 'Создание прогона из отчёта автотестов'],
-              ].map(([group, ops]) => (
-                <tr key={group} className="hover:bg-gray-50">
-                  <td className="border border-gray-200 px-3 py-2 font-semibold">{group}</td>
-                  <td className="border border-gray-200 px-3 py-2">{ops}</td>
+                ['Статистика', 'Данные дашборда'],
+                ['Импорт', 'Импорт проекта и статус'],
+                ['Автотесты', 'Создание прогона из отчёта'],
+              ].map(([g, o]) => (
+                <tr key={g} className="hover:bg-gray-50">
+                  <td className="border border-gray-200 px-3 py-2 font-semibold">{g}</td>
+                  <td className="border border-gray-200 px-3 py-2">{o}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Эндпоинт для получения тест-кейсов</h3>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <code className="text-lg font-mono text-blue-700">GET /api/cases/&#123;caseId&#125;?spaceId=&#123;spaceId&#125;</code>
-        </div>
-        <p className="text-gray-600 mb-3">Параметры запроса:</p>
-        <ul className="space-y-2 text-gray-600 mb-4">
-          <li className="flex items-start gap-2">
-            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">caseId</code>
-            <span>— ID тест-кейса (в пути URL)</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">spaceId</code>
-            <span>— ID пространства (query-параметр)</span>
-          </li>
-        </ul>
-        <CodeBlock>{`# Получить тест-кейс по ID
-GET {DOQA_BASE_URL}/api/cases/{caseId}?spaceId={spaceId}
-Headers:
-  Authorization: Bearer <token>
-  Accept: application/json
-
-# Пример cURL
-curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Accept: application/json"`}</CodeBlock>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Альтернативная авторизация (временный токен)</h3>
-        <CodeBlock>{`# Получить временный токен по логину и паролю
-POST {DOQA_BASE_URL}/api/auth/user-login
-Body:
-  {
-    "login": "user@example.com",
-    "password": "password"
-  }
-
-# Токен истекает через 10 часов (в box-версии настраивается)`}</CodeBlock>
-      </div>
     </div>
   );
 }
 
-function NotesTab() {
+function Files() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Важные замечания</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Структура проекта</h2>
 
-      <div className="bg-red-50 border border-red-200 rounded-lg p-5">
-        <h3 className="font-semibold text-red-800 mb-2">🔴 Ошибка 404 при обращении к ИИ</h3>
-        <p className="text-red-700 mb-3">
-          Если вы получаете ошибку <code className="bg-red-100 px-1 rounded">404 Client Error: Not Found</code>,
-          это означает, что URL API неверный.
-        </p>
-        
-        <div className="bg-white border border-red-200 rounded-lg p-4 mb-3">
-          <h4 className="font-semibold text-red-800 mb-2">Шаги для диагностики:</h4>
-          <ol className="space-y-2 text-red-700 text-sm list-decimal list-inside">
-            <li>
-              <strong>Проверьте подключение к ИИ:</strong>
-              <CodeBlock>{`python doqa_review.py --check-ai`}</CodeBlock>
-            </li>
-            <li>
-              <strong>Проверьте URL в .env</strong> — убедитесь, что он соответствует вашему провайдеру
-            </li>
-            <li>
-              <strong>Проверьте модель</strong> — убедитесь, что она существует у провайдера
-            </li>
-          </ol>
-        </div>
-
-        <h4 className="font-semibold text-red-800 mb-2">Примеры правильных URL:</h4>
-        <CodeBlock language="env">{`# OpenAI
-AI_API_URL=https://api.openai.com/v1/chat/completions
-
-# Qwen3.8 (Alibaba Cloud)
-# ВАЖНО: замените {WorkspaceId} на ваш реальный ID
-AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
-
-# Qwen3.8 (legacy URL)
-AI_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
-
-# YandexGPT
-AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
-
-# GigaChat
-AI_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
-
-# Ollama (локально)
-AI_API_URL=http://localhost:11434/v1/chat/completions`}</CodeBlock>
-        
-        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
-          <p className="text-yellow-800 text-sm">
-            <strong>⚠️ Для Qwen:</strong> Если получаете 404, проверьте что в URL указан реальный WorkspaceId 
-            (не текст <code className="bg-yellow-100 px-1 rounded">{'{WorkspaceId}'}</code>). 
-            Получить его можно в консоли Alibaba Cloud Model Studio.
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-red-50 border border-red-200 rounded-lg p-5">
-        <h3 className="font-semibold text-red-800 mb-2">🔴 Ограничения по API DoQA</h3>
-        <p className="text-red-700">
-          Точные эндпоинты публичного API DoQA доступны только через Swagger UI,
-          который требует авторизации в системе. В утилите используются типовые URL,
-          основанные на документации DoQA 4.3.
-        </p>
-        <p className="text-red-700 mt-2">
-          <strong>Если запросы к API не работают</strong> — откройте Swagger UI
-          (Профиль → Public API), проверьте актуальные эндпоинты и скорректируйте
-          URL в функции <code className="bg-red-100 px-1 rounded">get_test_cases_from_api()</code>.
-        </p>
-      </div>
-
-      <div className="bg-green-50 border border-green-200 rounded-lg p-5">
-        <h3 className="font-semibold text-green-800 mb-2">🟢 Альтернативный вариант — файл экспорта</h3>
-        <p className="text-green-700">
-          Если API недоступен или эндпоинты неизвестны, используйте режим загрузки из файла:
-        </p>
-        <CodeBlock>{`python doqa_review.py --mode file --file export.xlsx`}</CodeBlock>
-        <p className="text-green-700 mt-2">
-          Файл экспорта можно получить через интерфейс DoQA: вкладка «Кейсы» → кнопка «Экспорт».
-          Формат файла — xlsx с колонками на английском языке.
-        </p>
-      </div>
-
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
-        <h3 className="font-semibold text-yellow-800 mb-2">🟡 Рекомендации</h3>
-        <ul className="space-y-2 text-yellow-700">
-          <li>• <strong>Промт</strong> — редактируйте файл <code className="bg-yellow-100 px-1 rounded">prompt.txt</code> для настройки поведения ИИ</li>
-          <li>• <strong>Правила</strong> — дополняйте файл <code className="bg-yellow-100 px-1 rounded">DoQA_test_case_review_rules.txt</code> специфичными для вашего проекта правилами</li>
-          <li>• <strong>Модель ИИ</strong> — для лучшего качества используйте GPT-4o или аналогичную модель</li>
-          <li>• <strong>Лимиты API</strong> — учитывайте rate limits провайдера ИИ при большом количестве кейсов</li>
-          <li>• <strong>Токен DoQA</strong> — храните токен в безопасном месте, он показывается только один раз при создании</li>
-        </ul>
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Дерево файлов</h3>
+        <Code lang="text">{`doqa_review_tool/
+├── doqa_review.py                      # Основной скрипт
+├── .env                                # Ваши настройки (НЕ коммитить!)
+├── .env.example                        # Шаблон .env
+├── .gitignore                          # Исключения для git
+├── prompt.txt                          # Промт для ИИ (редактируемый)
+├── DoQA_test_case_review_rules_.txt    # Правила проверки
+├── requirements.txt                    # Зависимости
+├── README.md                           # Документация
+└── review_results/                     # Результаты (создаётся автоматически)
+    ├── Ревью кейса_456_2024-01-15_14-30-00.txt
+    └── Ревью кейса_789_2024-01-15_14-30-05.txt`}</Code>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Формат имени файла результата</h3>
-        <CodeBlock language="text">{`Ревью кейса_<id кейса>_<YYYY-MM-DD_HH-MM-SS>.txt
-
-Примеры:
-  Ревью кейса_456_2024-01-15_14-30-00.txt
-  Ревью кейса_789_2024-01-15_14-30-05.txt`}</CodeBlock>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Запуск в PyCharm</h3>
-        <ol className="space-y-3 text-gray-600 list-decimal list-inside">
-          <li>Откройте папку <code className="bg-gray-100 px-1 rounded">doqa_review_tool/</code> как проект</li>
-          <li>Создайте виртуальное окружение (File → Settings → Python Interpreter)</li>
-          <li>Установите зависимости: <code className="bg-gray-100 px-1 rounded">pip install -r requirements.txt</code></li>
-          <li>Создайте <code className="bg-gray-100 px-1 rounded">.env</code> из <code className="bg-gray-100 px-1 rounded">.env.example</code> и заполните</li>
-          <li>Run → Edit Configurations → добавьте Python configuration</li>
-          <li>Script: <code className="bg-gray-100 px-1 rounded">doqa_review.py</code>, Working directory: путь к проекту</li>
-          <li>Parameters: оставьте пустыми (всё в .env) или переопределяйте частично</li>
-          <li>Запустите через <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F9</kbd> (Debug) или <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F10</kbd> (Run)</li>
-        </ol>
-        <p className="text-sm text-gray-500 mt-3">
-          💡 PyCharm автоматически подхватывает <code className="bg-gray-100 px-1 rounded">.env</code> из Working Directory.
-          Также можно использовать плагин <strong>EnvFile</strong> для явного указания файла.
+        <h3 className="font-semibold text-lg mb-3">📄 prompt.txt — Промт для ИИ</h3>
+        <p className="text-gray-600">
+          Перечитывается при каждом запуске. Отредактируйте файл — изменения применятся автоматически.
+          Путь можно изменить через <code className="bg-gray-100 px-1 rounded">PROMPT_FILE</code> в .env.
         </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Совместимость с ИИ-провайдерами</h3>
-        <p className="text-gray-600 mb-3">
-          Утилита использует формат запросов OpenAI Chat Completions API.
-          Совместимые провайдеры:
-        </p>
+        <h3 className="font-semibold text-lg mb-3">📐 DoQA_test_case_review_rules_.txt</h3>
+        <p className="text-gray-600 mb-3">Правила проверки тест-кейсов:</p>
         <ul className="space-y-1 text-gray-600">
-          <li>• <strong>OpenAI</strong> (GPT-4o, GPT-4, GPT-3.5-turbo)</li>
-          <li>• <strong>YandexGPT</strong> (через Yandex Cloud)</li>
-          <li>• <strong>GigaChat</strong> (Сбер)</li>
-          <li>• <strong>OpenRouter</strong> (агрегатор моделей)</li>
-          <li>• <strong>LocalAI / Ollama</strong> (локальные модели)</li>
-          <li>• Любой другой OpenAI-совместимый API</li>
+          <li>• Структура тест-кейса (название, описание, предусловия)</li>
+          <li>• Качество шагов (действие, ожидаемый результат)</li>
+          <li>• Тестовые данные</li>
+          <li>• Правила русского языка</li>
+          <li>• Полнота покрытия</li>
         </ul>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">📊 Формат файла экспорта DoQA (xlsx)</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-200 px-3 py-2 text-left">Колонка</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">Содержимое</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['ID', 'Идентификатор тест-кейса'],
+                ['Title', 'Название'],
+                ['Description', 'Описание'],
+                ['Priority', 'Приоритет'],
+                ['Preconditions', 'Предусловия'],
+                ['Postconditions', 'Постусловия'],
+                ['Step', 'Шаг'],
+                ['Expected result', 'Ожидаемый результат'],
+                ['Test data', 'Тестовые данные'],
+              ].map(([c, d]) => (
+                <tr key={c} className="hover:bg-gray-50">
+                  <td className="border border-gray-200 px-3 py-1.5 font-mono text-xs">{c}</td>
+                  <td className="border border-gray-200 px-3 py-1.5">{d}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm text-gray-500 mt-3">
+          Один тест-кейс = столько строк, сколько в нём шагов. Первый шаг в строке кейса,
+          каждый следующий — в отдельной строке (колонки кейса пустые).
+        </p>
       </div>
     </div>
   );
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [tab, setTab] = useState<TabId>('overview');
 
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'overview': return <OverviewTab />;
-      case 'install': return <InstallTab />;
-      case 'usage': return <UsageTab />;
-      case 'files': return <FilesTab />;
-      case 'api': return <ApiTab />;
-      case 'notes': return <NotesTab />;
+  const render = () => {
+    switch (tab) {
+      case 'overview': return <Overview />;
+      case 'setup': return <Setup />;
+      case 'usage': return <Usage />;
+      case 'api': return <Api />;
+      case 'files': return <Files />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl">
-              🤖
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">DoQA Review Tool</h1>
-              <p className="text-sm text-gray-500">Утилита ревью тест-кейсов с использованием ИИ</p>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                DoQA 4.3.1
-              </span>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                Python 3.10+
-              </span>
-            </div>
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xl">
+            🤖
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">DoQA Review Tool</h1>
+            <p className="text-sm text-gray-500">Ревью тест-кейсов с ИИ</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">DoQA 4.3.1</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Python</span>
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto py-2">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+        <div className="max-w-5xl mx-auto px-4 flex gap-1 overflow-x-auto py-2">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                tab === t.id
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <span>{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {renderTab()}
-      </main>
+      <main className="max-w-5xl mx-auto px-4 py-8">{render()}</main>
 
-      {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-6xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          <p>DoQA Review Tool • TMS DoQA 4.3.1 • Python утилита для автоматического ревью тест-кейсов</p>
+        <div className="max-w-5xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
+          <p>DoQA Review Tool • DoQA 4.3.1 • Python</p>
           <p className="mt-1">
-            Документация DoQA: <a href="https://docs.doqa.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">docs.doqa.app</a>
+            Документация:{' '}
+            <a href="https://docs.doqa.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+              docs.doqa.app
+            </a>
           </p>
         </div>
       </footer>

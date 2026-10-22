@@ -1,276 +1,71 @@
-# Утилита ревью тест-кейсов DoQA с использованием ИИ
+# DoQA Review Tool
 
-## Описание
-
-Python-утилита для автоматического ревью тест-кейсов из TMS DoQA (версия 4.3.1) с использованием искусственного интеллекта.
+Утилита для автоматического ревью тест-кейсов DoQA 4.3.1 с использованием ИИ.
 
 ## Возможности
 
-- **Получение тест-кейсов через API DoQA** — загрузка кейсов по ID из указанного пространства
-- **Получение тест-кейсов из файла** — альтернативный вариант: загрузка из xlsx файла экспорта DoQA
-- **Анализ ИИ** — каждый тест-кейс отправляется в ИИ для проверки на соответствие правилам
-- **Редактируемый промт** — промт хранится в отдельном файле и перечитывается при каждом запуске
-- **Конфигурация через .env** — все параметры задаются в одном файле
-- **Результаты в файлах** — для каждого кейса создаётся отдельный файл с результатом ревью
+- Получение тест-кейсов через API DoQA (`GET /api/cases/{caseId}`)
+- Получение тест-кейсов из файла экспорта DoQA (xlsx)
+- Анализ каждого кейса в ИИ на соответствие правилам
+- Редактируемый промт (файл `prompt.txt`)
+- Результаты в отдельных файлах: `Ревью кейса_<id>_<дата_время>.txt`
+- Все параметры из `.env` файла
 
 ## Установка
 
 ```bash
-# Установить зависимости
 pip install -r requirements.txt
-```
-
-## Настройка через .env
-
-### 1. Создайте файл .env
-
-Скопируйте `.env.example` в `.env` и заполните значения:
-
-```bash
 cp .env.example .env
+# Заполните .env
 ```
 
-### 2. Заполните обязательные параметры
-
-Минимальный `.env` для работы:
-
-```env
-# Обязательные
-DOQA_API_TOKEN=ваш_api_токен_doqa
-AI_API_KEY=ваш_ключ_ии
-
-# Режим работы
-DOQA_MODE=file
-DOQA_FILE=export.xlsx
-```
-
-### 3. Полный список параметров
-
-| Переменная | Описание | По умолчанию |
-|---|---|---|
-| `DOQA_BASE_URL` | URL экземпляра DoQA | `https://app.doqa.app` |
-| `DOQA_API_TOKEN` | API-токен DoQA | — |
-| `DOQA_MODE` | Режим: `api` или `file` | `api` |
-| `DOQA_SPACE_ID` | ID пространства (для api) | — |
-| `DOQA_CASE_IDS` | ID кейсов через запятую | — |
-| `DOQA_FILE` | Путь к файлу xlsx (для file) | — |
-| `AI_API_URL` | URL API провайдера ИИ | `https://api.openai.com/v1/chat/completions` |
-| `AI_API_KEY` | API-ключ провайдера ИИ | — |
-| `AI_MODEL` | Модель ИИ | `gpt-4o` |
-| `PROMPT_FILE` | Путь к файлу с промтом | `prompt.txt` |
-| `RULES_FILE` | Путь к файлу с правилами | `DoQA_test_case_review_rules.txt` |
-| `OUTPUT_DIR` | Директория для результатов | `review_results` |
-
-## Использование
-
-### Приоритет параметров
-
-1. **Аргументы командной строки** (`--mode`, `--space-id`, ...) — высший приоритет
-2. **Переменные окружения** (экспортированные в shell)
-3. **Файл .env** (в директории скрипта или текущей)
-4. **Значения по умолчанию** — низший приоритет
-
-### Запуск только по .env (без аргументов)
+## Запуск
 
 ```bash
-# Все параметры берутся из .env
 python doqa_review.py
 ```
 
-### Переопределить параметры через CLI
+Все параметры берутся из `.env`.
 
-```bash
-# Переопределить режим и файл
-python doqa_review.py --mode file --file other_export.xlsx
-
-# Переопределить только space_id
-python doqa_review.py --space-id 999
-
-# Указать токен напрямую (не из .env)
-python doqa_review.py --token "временный_токен" --ai-key "ключ"
-```
-
-### Показать текущую конфигурацию
-
-```bash
-python doqa_review.py --show-config
-```
-
-### Примеры .env для разных сценариев
-
-**Режим API:**
-```env
-DOQA_MODE=api
-DOQA_SPACE_ID=123
-DOQA_CASE_IDS=456,789,101
-DOQA_API_TOKEN=your_token
-AI_API_KEY=your_ai_key
-```
-
-**Режим файл:**
-```env
-DOQA_MODE=file
-DOQA_FILE=export.xlsx
-AI_API_KEY=your_ai_key
-```
-
-**С Qwen3.8 (Alibaba Cloud Model Studio):**
-```env
-# ВАЖНО: замените {WorkspaceId} на ваш реальный ID рабочего пространства
-AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
-AI_API_KEY=sk-xxxxxxxxxxxxxxxx
-AI_MODEL=qwen3.8-max
-```
-
-**Получение Workspace ID для Qwen:**
-1. Войдите в [консоль Alibaba Cloud Model Studio](https://modelstudio.console.alibabacloud.com/)
-2. Перейдите на страницу рабочего пространства
-3. Скопируйте Workspace ID
-4. Замените `{WorkspaceId}` в URL на реальный ID
-
-**Получение API-ключа для Qwen:**
-1. Откройте [страницу управления API-ключами](https://modelstudio.console.alibabacloud.com/model/settings/api-key)
-2. Создайте новый ключ
-3. Скопируйте значение (начинается с `sk-`)
-
-**Доступные модели Qwen:**
-- `qwen3.8-max` — максимальное качество
-- `qwen3.8-flash` — быстрая и экономичная
-- `qwen3.7-max`, `qwen3.7-plus`, `qwen3.7-flash` — предыдущие версии
-
-**С YandexGPT:**
-```env
-AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
-AI_API_KEY=your_yandex_key
-AI_MODEL=yandexgpt
-```
-
-## Запуск в PyCharm
-
-1. Откройте папку `doqa_review_tool/` как проект
-2. Создайте виртуальное окружение (File → Settings → Python Interpreter)
-3. Установите зависимости: `pip install -r requirements.txt`
-4. Создайте `.env` файл на основе `.env.example`
-5. Run → Edit Configurations → добавьте Python configuration
-6. Script: `doqa_review.py`, Working directory: путь к проекту
-7. Parameters: оставьте пустыми (всё в .env) или переопределяйте частично
-8. Запустите через Shift+F9 (Debug) или Shift+F10 (Run)
-
-## Структура файлов
+## Структура
 
 ```
 doqa_review_tool/
-├── doqa_review.py                      # Основной скрипт утилиты
+├── doqa_review.py                      # Основной скрипт
 ├── .env                                # Ваши настройки (НЕ коммитить!)
 ├── .env.example                        # Шаблон .env
-├── .gitignore                          # Исключения для git
 ├── prompt.txt                          # Промт для ИИ (редактируемый)
-├── DoQA_test_case_review_rules.txt     # Правила проверки тест-кейсов
-├── requirements.txt                    # Python-зависимости
-├── README.md                           # Этот файл
-└── review_results/                     # Директория с результатами (создаётся автоматически)
-    ├── Ревью кейса_456_2024-01-15_14-30-00.txt
-    └── Ревью кейса_789_2024-01-15_14-30-05.txt
+├── DoQA_test_case_review_rules_.txt    # Правила проверки
+├── requirements.txt                    # Зависимости
+└── review_results/                     # Результаты (создаётся автоматически)
 ```
 
-## Диагностика ошибок
+## Параметры .env
 
-### Ошибка 404 при обращении к ИИ
+| Переменная | Описание |
+|---|---|
+| `DOQA_BASE_URL` | URL DoQA (по умолчанию `https://app.doqa.app`) |
+| `DOQA_API_TOKEN` | API-токен DoQA |
+| `DOQA_SPACE_ID` | ID пространства |
+| `DOQA_CASE_IDS` | ID кейсов через запятую |
+| `DOQA_FILE` | Путь к xlsx-файлу экспорта |
+| `AI_API_URL` | URL API провайдера ИИ |
+| `AI_API_KEY` | API-ключ ИИ |
+| `AI_MODEL` | Модель ИИ |
+| `PROMPT_FILE` | Путь к файлу с промтом |
+| `RULES_FILE` | Путь к файлу с правилами |
+| `OUTPUT_DIR` | Директория для результатов |
 
-Если вы получаете ошибку `404 Client Error: Not Found`, это означает, что URL API неверный.
+## API DoQA
 
-**Шаги для диагностики:**
-
-1. **Проверьте подключение к ИИ:**
-   ```bash
-   python doqa_review.py --check-ai
-   ```
-   Эта команда отправит тестовый запрос и покажет подробную информацию об ошибке.
-
-2. **Проверьте URL в .env:**
-   - Убедитесь, что URL соответствует вашему провайдеру
-   - Проверьте, что нет опечаток
-   - Убедитесь, что URL заканчивается правильно (обычно `/v1/chat/completions`)
-
-3. **Примеры правильных URL:**
-   ```env
-   # OpenAI
-   AI_API_URL=https://api.openai.com/v1/chat/completions
-   
-   # YandexGPT
-   AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
-   
-   # GigaChat
-   AI_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
-   
-   # Ollama (локально)
-   AI_API_URL=http://localhost:11434/v1/chat/completions
-   ```
-
-4. **Проверьте модель:**
-   - Убедитесь, что модель существует у вашего провайдера
-   - Для OpenAI: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
-   - Для YandexGPT: `yandexgpt`, `yandexgpt-lite`
-   - Для GigaChat: `GigaChat`, `GigaChat-Pro`
-
-5. **Проверьте API-ключ:**
-   - Убедитесь, что ключ активен и не истёк
-   - Проверьте, что у ключа есть доступ к выбранной модели
-
-### Другие частые ошибки
-
-**Ошибка 401 (Unauthorized):**
-- Неверный API-ключ
-- Ключ истёк или отозван
-- Недостаточно прав для выбранной модели
-
-**Ошибка 429 (Too Many Requests):**
-- Превышен лимит запросов
-- Подождите несколько минут и попробуйте снова
-- Уменьшите количество кейсов или увеличьте интервал между запросами
-
-**Ошибка ConnectionError:**
-- Сервер недоступен
-- Проверьте интернет-соединение
-- Проверьте настройки прокси/файрвола
-- Для локальных моделей (Ollama) — убедитесь, что сервер запущен
-
-## Примечания по API DoQA
-
-Публичный API DoQA 4.3.1 документирован в Swagger UI, доступном через:
-1. Войдите в DoQA
-2. Нажмите на своё имя в правом верхнем углу
-3. Выберите «Public API»
+Эндпоинт: `GET /api/cases/{caseId}?spaceId={spaceId}`
 
 Авторизация: `Authorization: Bearer <токен>`
 
-Токен создаётся в профиле пользователя (раздел «API-токены»).
-
-### Эндпоинт для получения тест-кейсов
-
-```
-GET /api/cases/{caseId}?spaceId={spaceId}
-```
-
-Параметры:
-- `caseId` — ID тест-кейса (в пути URL)
-- `spaceId` — ID пространства (query-параметр)
-
-Пример запроса:
-```bash
-curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Accept: application/json"
-```
-
-**Важно:** Если эндпоинты отличаются в вашем экземпляре DoQA — проверьте актуальную структуру в Swagger UI и скорректируйте URL в функции `get_test_cases_from_api()`.
+Токен: Профиль → API-токены → Создать.
 
 ## Формат файла экспорта DoQA
 
-Файл экспорта DoQA — это xlsx со следующими колонками:
-- Number, ID, Path, Title, Creator, Creation date, Priority, Status
-- Keys, Description, Parameters, Preconditions, Postconditions
-- Attachments, Step, Expected result, Test data
-- Automation status, Autotest, Attributes
+xlsx с колонками: ID, Title, Description, Preconditions, Postconditions, Priority, Step, Expected result, Test data, ...
 
-Один тест-кейс занимает столько строк, сколько в нём шагов.
+Один кейс = несколько строк (по числу шагов).

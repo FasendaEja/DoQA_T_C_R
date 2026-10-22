@@ -1,948 +1,276 @@
 #!/usr/bin/env python3
 """
-Утилита для ревью тест-кейсов DoQA с использованием ИИ.
+Утилита ревью тест-кейсов DoQA с использованием ИИ.
 
-Функционал:
-1. Получение тест-кейсов из DoQA по API или из файла экспорта (xlsx)
-2. Передача каждого тест-кейса в ИИ для анализа на соответствие правилам
-3. Сохранение результатов ревью в отдельные файлы
-
-Все параметры можно задать через .env файл (см. .env.example).
-Аргументы командной строки имеют приоритет над .env.
-
-Версия DoQA: 4.3.1
+DoQA 4.3.1 | Эндпоинт: GET /api/cases/{caseId}
+Все параметры берутся из .env файла (см. .env.example).
 """
 
 import os
 import sys
-import json
-import argparse
 import requests
 import openpyxl
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-# ============================================================
-# ЗАГРУЗКА .env ФАЙЛА
-# ============================================================
-
-# Загружаем .env из текущей директории (или директории скрипта)
-# find_doten позволяет найти .env даже при запуске из другой директории
+# ── Загрузка .env ────────────────────────────────────────────
 _env_path = Path(__file__).parent / ".env"
-if _env_path.exists():
-    load_dotenv(_env_path)
-else:
-    # Пробуем загрузить из текущей рабочей директории
-    load_dotenv()
+load_dotenv(_env_path if _env_path.exists() else None)
 
-# ============================================================
-# КОНФИГУРАЦИЯ (из .env или переменных окружения)
-# ============================================================
+# ── Конфигурация ─────────────────────────────────────────────
+DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
+DOQA_TOKEN = os.getenv("DOQA_API_TOKEN", "")
+DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
+DOQA_CASE_IDS = os.getenv("DOQA_CASE_IDS", "")
+DOQA_FILE = os.getenv("DOQA_FILE", "")
 
-# Базовый URL DoQA (измените на адрес вашего экземпляра DoQA)
-DOQA_BASE_URL = os.environ.get("DOQA_BASE_URL", "https://app.doqa.app")
+AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1/chat/completions")
+AI_API_KEY = os.getenv("AI_API_KEY", "")
+AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
 
-# API-токен DoQA (получить в профиле пользователя -> API-токены)
-DOQA_API_TOKEN = os.environ.get("DOQA_API_TOKEN", "")
-
-# Параметры запуска из .env
-DOQA_MODE = os.environ.get("DOQA_MODE", "api")
-DOQA_SPACE_ID = os.environ.get("DOQA_SPACE_ID", "")
-DOQA_CASE_IDS = os.environ.get("DOQA_CASE_IDS", "")
-DOQA_FILE = os.environ.get("DOQA_FILE", "")
-
-# Путь к файлу с промтом для ИИ
-PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
-
-# Путь к файлу с правилами ревью
-RULES_FILE = os.environ.get("RULES_FILE", "DoQA_test_case_review_rules.txt")
-
-# Настройки ИИ (OpenAI-совместимый API)
-AI_API_URL = os.environ.get("AI_API_URL", "https://api.openai.com/v1/chat/completions")
-AI_API_KEY = os.environ.get("AI_API_KEY", "")
-AI_MODEL = os.environ.get("AI_MODEL", "gpt-4o")
-
-# Директория для сохранения результатов
-OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "review_results")
+PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
+RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "review_results")
 
 
-# ============================================================
-# ПОЛУЧЕНИЕ ТЕСТ-КЕЙСОВ ЧЕРЕЗ API DoQA
-# Эндпоинт: GET /api/cases/{caseId}?spaceId={spaceId}
-# ============================================================
-
-def get_test_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
+# ── 1. Получение тест-кейсов через API DoQA ──────────────────
+def get_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
     """
-    Получение тест-кейсов из DoQA через публичный API.
-
-    Эндпоинт: GET /api/cases/{caseId}
-    Документация API: доступна через Swagger UI в профиле пользователя DoQA
-    (Нажмите на имя -> Public API).
-
-    Авторизация: Bearer Token (персональный API-токен из профиля)
-
-    Args:
-        space_id: ID пространства в DoQA (передаётся как query-параметр spaceId)
-        case_ids: Список ID тест-кейсов для получения
-
-    Returns:
-        Список словарей с данными тест-кейсов
+    Получение тест-кейсов через GET /api/cases/{caseId}.
+    spaceId передаётся как query-параметр для фильтрации по пространству.
     """
-    if not DOQA_API_TOKEN:
-        print("ОШИБКА: Не указан API-токен DoQA.")
-        print("Укажите DOQA_API_TOKEN в файле .env или через переменную окружения")
-        sys.exit(1)
+    if not DOQA_TOKEN:
+        sys.exit("ОШИБКА: Не указан DOQA_API_TOKEN в .env")
 
     headers = {
-        "Authorization": f"Bearer {DOQA_API_TOKEN}",
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Authorization": f"Bearer {DOQA_TOKEN}",
+        "Accept": "application/json",
     }
+    cases = []
 
-    test_cases = []
-
-    for case_id in case_ids:
-        print(f"  Загрузка тест-кейса {case_id} (пространство {space_id})...")
-
-        # Эндпоинт: GET /api/cases/{caseId}
-        # spaceId передаётся как query-параметр для фильтрации по пространству
-        url = f"{DOQA_BASE_URL}/api/cases/{case_id}"
-        params = {"spaceId": space_id}
+    for cid in case_ids:
+        url = f"{DOQA_BASE_URL}/api/cases/{cid}"
+        print(f"  → GET {url} (spaceId={space_id})")
 
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
-            case_data = response.json()
-
-            # Формируем структурированное представление тест-кейса
-            test_case = format_api_case(case_data)
-            test_cases.append(test_case)
-            print(f"    ✓ Кейс {case_id} загружен успешно")
-
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 404:
-                print(f"    ✗ Кейс {case_id} не найден (пространство {space_id})")
-            elif response.status_code == 401:
-                print(f"    ✗ Ошибка авторизации. Проверьте DOQA_API_TOKEN в .env")
-                sys.exit(1)
-            else:
-                print(f"    ✗ HTTP ошибка при загрузке кейса {case_id}: {e}")
-        except requests.exceptions.ConnectionError:
-            print(f"    ✗ Не удалось подключиться к {DOQA_BASE_URL}")
-            print(f"      Проверьте DOQA_BASE_URL в .env и подключение к сети")
-            sys.exit(1)
+            r = requests.get(url, headers=headers, params={"spaceId": space_id}, timeout=30)
+            r.raise_for_status()
+            cases.append(_normalize(r.json()))
+            print(f"    ✓ Кейс {cid} загружен")
+        except requests.HTTPError as e:
+            print(f"    ✗ HTTP {r.status_code}: {e}")
         except Exception as e:
-            print(f"    ✗ Ошибка при загрузке кейса {case_id}: {e}")
+            print(f"    ✗ Ошибка: {e}")
 
-    return test_cases
+    return cases
 
 
-def format_api_case(case_data: dict) -> dict:
-    """
-    Форматирование данных тест-кейса из API в единый формат.
-    
-    Структура ответа API DoQA может включать:
-    - id: идентификатор кейса
-    - title: название
-    - description: описание
-    - preconditions: предусловия
-    - postconditions: постусловия
-    - steps: массив шагов (каждый шаг содержит action и expected_result)
-    - priority: приоритет
-    - status: статус
-    - tags/keys: теги
-    - parameters: параметры
-    - attachments: вложения
-    """
+def _normalize(data: dict) -> dict:
+    """Приведение ответа API к единому формату."""
     steps = []
-    if "steps" in case_data:
-        for i, step in enumerate(case_data["steps"], 1):
-            steps.append({
-                "number": i,
-                "action": step.get("action", step.get("step", "")),
-                "expected_result": step.get("expected_result", step.get("expectedResult", "")),
-                "test_data": step.get("test_data", step.get("testData", ""))
-            })
-
+    for i, s in enumerate(data.get("steps", []), 1):
+        steps.append({
+            "number": i,
+            "action": s.get("action", s.get("step", "")),
+            "expected": s.get("expected_result", s.get("expectedResult", "")),
+            "data": s.get("test_data", s.get("testData", "")),
+        })
     return {
-        "id": case_data.get("id", ""),
-        "title": case_data.get("title", case_data.get("name", "")),
-        "description": case_data.get("description", ""),
-        "preconditions": case_data.get("preconditions", ""),
-        "postconditions": case_data.get("postconditions", ""),
-        "priority": case_data.get("priority", ""),
-        "status": case_data.get("status", ""),
-        "tags": case_data.get("tags", case_data.get("keys", [])),
-        "parameters": case_data.get("parameters", ""),
+        "id": data.get("id", ""),
+        "title": data.get("title", data.get("name", "")),
+        "description": data.get("description", ""),
+        "preconditions": data.get("preconditions", ""),
+        "postconditions": data.get("postconditions", ""),
+        "priority": data.get("priority", ""),
         "steps": steps,
-        "source": "api"
     }
 
 
-# ============================================================
-# ПОЛУЧЕНИЕ ТЕСТ-КЕЙСОВ ИЗ ФАЙЛА ЭКСПОРТА DoQA (xlsx)
-# ============================================================
-
-def get_test_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict]:
+# ── 2. Получение тест-кейсов из файла экспорта DoQA ──────────
+def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict]:
     """
-    Получение тест-кейсов из файла экспорта DoQA (формат xlsx).
-    
-    Формат файла экспорта DoQA:
-    - Файл xlsx с колонками на английском языке
-    - Колонки: Number, ID, Path, Title, Creator, Creation date, Priority, Status,
-      Keys, Description, Parameters, Preconditions, Postconditions, Attachments,
-      Step, Expected result, Test data, Automation status, Autotest, Attributes
-    - Один тест-кейс занимает столько строк, сколько в нём шагов
-    - Первый шаг в строке самого тест-кейса, каждый следующий — в отдельной строке
-      (колонки тест-кейса пустые)
-    
-    Args:
-        file_path: Путь к xlsx файлу экспорта DoQA
-        case_ids: Опциональный список ID для фильтрации (None = все кейсы)
-        
-    Returns:
-        Список словарей с данными тест-кейсов
+    Парсинг xlsx-файла экспорта DoQA.
+    Колонки: ID, Title, Description, Preconditions, Postconditions,
+             Priority, Step, Expected result, Test data, ...
+    Один кейс = несколько строк (по числу шагов).
     """
     if not os.path.exists(file_path):
-        print(f"ОШИБКА: Файл не найден: {file_path}")
-        print(f"Укажите DOQA_FILE в .env или через --file")
-        sys.exit(1)
+        sys.exit(f"ОШИБКА: Файл не найден: {file_path}")
 
-    print(f"  Чтение файла экспорта DoQA: {file_path}")
-    
+    print(f"  → Чтение файла: {file_path}")
     wb = openpyxl.load_workbook(file_path, read_only=True)
     ws = wb.active
 
-    # Читаем заголовки
-    headers_row = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-    
-    # Маппинг колонок (индексы)
-    col_map = {}
-    for i, header in enumerate(headers_row):
-        if header:
-            col_map[header.strip()] = i
+    # Маппинг колонок
+    cols = {c.value: i for i, c in enumerate(next(ws.iter_rows(min_row=1, max_row=1))) if c.value}
 
-    # Проверяем наличие обязательных колонок
-    required_cols = ["ID", "Title", "Step", "Expected result"]
-    missing_cols = [c for c in required_cols if c not in col_map]
-    if missing_cols:
-        print(f"ОШИБКА: В файле отсутствуют обязательные колонки: {missing_cols}")
-        print(f"  Доступные колонки: {list(col_map.keys())}")
-        sys.exit(1)
+    for need in ("ID", "Title", "Step", "Expected result"):
+        if need not in cols:
+            sys.exit(f"ОШИБКА: В файле нет колонки '{need}'. Найдены: {list(cols.keys())}")
 
-    # Парсим строки в тест-кейсы
-    test_cases_dict = {}  # id -> case data
-    current_case_id = None
+    def cell(row, name):
+        v = row[cols[name]] if name in cols and cols[name] < len(row) else None
+        return str(v).strip() if v else ""
+
+    cases = {}
+    current = None
 
     for row in ws.iter_rows(min_row=2, values_only=True):
-        if row is None or all(cell is None for cell in row):
+        if not row or all(c is None for c in row):
             continue
 
-        # Получаем ID из строки
-        row_id = get_cell_value(row, col_map, "ID")
-        
-        if row_id and str(row_id).strip():
-            # Новая строка тест-кейса
-            current_case_id = str(row_id).strip()
-            
-            if case_ids and current_case_id not in [str(cid) for cid in case_ids]:
-                current_case_id = None
+        row_id = cell(row, "ID")
+        if row_id:
+            if case_ids and row_id not in case_ids:
+                current = None
                 continue
-
-            if current_case_id not in test_cases_dict:
-                test_cases_dict[current_case_id] = {
-                    "id": current_case_id,
-                    "title": get_cell_value(row, col_map, "Title") or "",
-                    "description": get_cell_value(row, col_map, "Description") or "",
-                    "preconditions": get_cell_value(row, col_map, "Preconditions") or "",
-                    "postconditions": get_cell_value(row, col_map, "Postconditions") or "",
-                    "priority": get_cell_value(row, col_map, "Priority") or "",
-                    "status": get_cell_value(row, col_map, "Status") or "",
-                    "tags": get_cell_value(row, col_map, "Keys") or "",
-                    "parameters": get_cell_value(row, col_map, "Parameters") or "",
-                    "path": get_cell_value(row, col_map, "Path") or "",
+            current = row_id
+            if current not in cases:
+                cases[current] = {
+                    "id": current,
+                    "title": cell(row, "Title"),
+                    "description": cell(row, "Description"),
+                    "preconditions": cell(row, "Preconditions"),
+                    "postconditions": cell(row, "Postconditions"),
+                    "priority": cell(row, "Priority"),
                     "steps": [],
-                    "source": "file"
                 }
 
-            # Добавляем первый шаг
-            step_action = get_cell_value(row, col_map, "Step") or ""
-            step_expected = get_cell_value(row, col_map, "Expected result") or ""
-            step_data = get_cell_value(row, col_map, "Test data") or ""
-            
-            if step_action:
-                test_cases_dict[current_case_id]["steps"].append({
-                    "number": len(test_cases_dict[current_case_id]["steps"]) + 1,
-                    "action": step_action,
-                    "expected_result": step_expected,
-                    "test_data": step_data
-                })
-        
-        elif current_case_id and current_case_id in test_cases_dict:
-            # Продолжение шагов текущего тест-кейса (колонки кейса пустые)
-            step_action = get_cell_value(row, col_map, "Step") or ""
-            step_expected = get_cell_value(row, col_map, "Expected result") or ""
-            step_data = get_cell_value(row, col_map, "Test data") or ""
-            
-            if step_action:
-                test_cases_dict[current_case_id]["steps"].append({
-                    "number": len(test_cases_dict[current_case_id]["steps"]) + 1,
-                    "action": step_action,
-                    "expected_result": step_expected,
-                    "test_data": step_data
+        if current and current in cases:
+            step = cell(row, "Step")
+            if step:
+                cases[current]["steps"].append({
+                    "number": len(cases[current]["steps"]) + 1,
+                    "action": step,
+                    "expected": cell(row, "Expected result"),
+                    "data": cell(row, "Test data"),
                 })
 
     wb.close()
-
-    test_cases = list(test_cases_dict.values())
-    print(f"  Загружено тест-кейсов: {len(test_cases)}")
-    
-    return test_cases
+    result = list(cases.values())
+    print(f"  ✓ Загружено кейсов: {len(result)}")
+    return result
 
 
-def get_cell_value(row: tuple, col_map: dict, column_name: str):
-    """Безопасное получение значения ячейки по имени колонки."""
-    idx = col_map.get(column_name)
-    if idx is not None and idx < len(row):
-        value = row[idx]
-        return str(value).strip() if value is not None else ""
-    return ""
-
-
-# ============================================================
-# РАБОТА С ИИ
-# ============================================================
-
-def load_prompt(prompt_file: str) -> str:
-    """
-    Загрузка промта из файла.
-    Промт читается из файла при каждом обращении к ИИ.
-    """
-    if not os.path.exists(prompt_file):
-        print(f"ОШИБКА: Файл с промтом не найден: {prompt_file}")
-        print("Создайте файл с промтом или укажите PROMPT_FILE в .env")
-        sys.exit(1)
-    
-    with open(prompt_file, "r", encoding="utf-8") as f:
+# ── 3. Работа с ИИ ───────────────────────────────────────────
+def _read_file(path: str) -> str:
+    if not os.path.exists(path):
+        sys.exit(f"ОШИБКА: Файл не найден: {path}")
+    with open(path, "r", encoding="utf-8") as f:
         return f.read().strip()
 
 
-def load_rules(rules_file: str) -> str:
-    """Загрузка правил ревью из файла."""
-    if not os.path.exists(rules_file):
-        print(f"ОШИБКА: Файл с правилами не найден: {rules_file}")
-        sys.exit(1)
-    
-    with open(rules_file, "r", encoding="utf-8") as f:
-        return f.read().strip()
-
-
-def format_test_case_for_ai(test_case: dict) -> str:
-    """Форматирование тест-кейса для отправки в ИИ."""
-    parts = []
-    parts.append(f"ID: {test_case['id']}")
-    parts.append(f"Название: {test_case['title']}")
-    
-    if test_case.get("description"):
-        parts.append(f"Описание: {test_case['description']}")
-    if test_case.get("preconditions"):
-        parts.append(f"Предусловия: {test_case['preconditions']}")
-    if test_case.get("postconditions"):
-        parts.append(f"Постусловия: {test_case['postconditions']}")
-    if test_case.get("priority"):
-        parts.append(f"Приоритет: {test_case['priority']}")
-    if test_case.get("parameters"):
-        parts.append(f"Параметры: {test_case['parameters']}")
-    
-    if test_case.get("steps"):
+def _format_case(c: dict) -> str:
+    parts = [f"ID: {c['id']}", f"Название: {c['title']}"]
+    if c.get("description"):
+        parts.append(f"Описание: {c['description']}")
+    if c.get("preconditions"):
+        parts.append(f"Предусловия: {c['preconditions']}")
+    if c.get("postconditions"):
+        parts.append(f"Постусловия: {c['postconditions']}")
+    if c.get("steps"):
         parts.append("\nШаги:")
-        for step in test_case["steps"]:
-            step_text = f"  Шаг {step['number']}: {step['action']}"
-            if step.get("expected_result"):
-                step_text += f"\n    Ожидаемый результат: {step['expected_result']}"
-            if step.get("test_data"):
-                step_text += f"\n    Тестовые данные: {step['test_data']}"
-            parts.append(step_text)
-    
+        for s in c["steps"]:
+            parts.append(f"  Шаг {s['number']}: {s['action']}")
+            if s.get("expected"):
+                parts.append(f"    Ожидаемый результат: {s['expected']}")
+            if s.get("data"):
+                parts.append(f"    Тестовые данные: {s['data']}")
     return "\n".join(parts)
 
 
-def detect_ai_provider() -> str:
-    """Определение провайдера ИИ по URL."""
-    url_lower = AI_API_URL.lower()
-    if "openai.com" in url_lower:
-        return "openai"
-    elif "aliyuncs.com" in url_lower or "dashscope" in url_lower:
-        return "qwen"
-    elif "yandex" in url_lower or "cloud.yandex" in url_lower:
-        return "yandex"
-    elif "gigachat" in url_lower or "sberbank" in url_lower:
-        return "gigachat"
-    elif "localhost" in url_lower or "127.0.0.1" in url_lower:
-        return "local"
-    else:
-        return "custom"
+def review_case(case: dict, prompt: str, rules: str) -> str:
+    """Отправка одного тест-кейса в ИИ на ревью."""
+    if not AI_API_KEY:
+        return "ОШИБКА: Не указан AI_API_KEY в .env"
 
+    body = f"{prompt}\n\n=== ПРАВИЛА ПРОВЕРКИ ===\n{rules}\n\n=== ТЕСТ-КЕЙС ===\n{_format_case(case)}"
 
-def send_to_ai_openai(test_case: dict, prompt: str, rules: str) -> str:
-    """Отправка запроса к OpenAI-совместимому API."""
-    case_text = format_test_case_for_ai(test_case)
-    
-    full_message = f"""{prompt}
-
-=== ПРАВИЛА ПРОВЕРКИ ===
-{rules}
-
-=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
-{case_text}
-"""
-
-    headers = {
-        "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": AI_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
-            },
-            {
-                "role": "user",
-                "content": full_message
-            }
-        ],
-        "temperature": 0.3,
-        "max_tokens": 4000
-    }
-
-    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    
-    result = response.json()
-    return result["choices"][0]["message"]["content"]
-
-
-def send_to_ai_yandex(test_case: dict, prompt: str, rules: str) -> str:
-    """Отправка запроса к YandexGPT API."""
-    case_text = format_test_case_for_ai(test_case)
-    
-    full_message = f"""{prompt}
-
-=== ПРАВИЛА ПРОВЕРКИ ===
-{rules}
-
-=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
-{case_text}
-"""
-
-    # YandexGPT использует другой формат запроса
-    headers = {
-        "Authorization": f"Api-Key {AI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "modelUri": f"gpt://{AI_MODEL}",  # или "yandexgpt" для стандартной модели
-        "completionOptions": {
-            "stream": False,
-            "temperature": 0.3,
-            "maxTokens": "4000"
-        },
-        "messages": [
-            {
-                "role": "system",
-                "text": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
-            },
-            {
-                "role": "user",
-                "text": full_message
-            }
-        ]
-    }
-
-    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    
-    result = response.json()
-    return result["result"]["alternatives"][0]["message"]["text"]
-
-
-def send_to_ai_gigachat(test_case: dict, prompt: str, rules: str) -> str:
-    """Отправка запроса к GigaChat API."""
-    case_text = format_test_case_for_ai(test_case)
-    
-    full_message = f"""{prompt}
-
-=== ПРАВИЛА ПРОВЕРКИ ===
-{rules}
-
-=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
-{case_text}
-"""
-
-    # GigaChat использует OpenAI-совместимый формат, но с другой авторизацией
     headers = {
         "Authorization": f"Bearer {AI_API_KEY}",
         "Content-Type": "application/json",
-        "Accept": "application/json"
     }
-
     payload = {
         "model": AI_MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
-            },
-            {
-                "role": "user",
-                "content": full_message
-            }
+            {"role": "system", "content": "Ты — опытный QA-инженер. Отвечай на русском языке."},
+            {"role": "user", "content": body},
         ],
         "temperature": 0.3,
-        "max_tokens": 4000
+        "max_tokens": 4000,
     }
-
-    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    
-    result = response.json()
-    return result["choices"][0]["message"]["content"]
-
-
-def send_to_ai_qwen(test_case: dict, prompt: str, rules: str) -> str:
-    """
-    Отправка запроса к Qwen API (Alibaba Cloud Model Studio / DashScope).
-    
-    Qwen использует OpenAI-совместимый формат через endpoint:
-    https://{WorkspaceId}.{region}.maas.aliyuncs.com/compatible-mode/v1/chat/completions
-    
-    Или legacy URL:
-    https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
-    """
-    case_text = format_test_case_for_ai(test_case)
-    
-    full_message = f"""{prompt}
-
-=== ПРАВИЛА ПРОВЕРКИ ===
-{rules}
-
-=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
-{case_text}
-"""
-
-    # Qwen использует стандартную Bearer-авторизацию как OpenAI
-    headers = {
-        "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": AI_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
-            },
-            {
-                "role": "user",
-                "content": full_message
-            }
-        ],
-        "temperature": 0.3,
-        "max_tokens": 4000
-    }
-
-    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
-    response.raise_for_status()
-    
-    result = response.json()
-    return result["choices"][0]["message"]["content"]
-
-
-def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
-    """
-    Отправка тест-кейса в ИИ для анализа.
-    Автоматически определяет провайдера и использует правильный формат запроса.
-    
-    Args:
-        test_case: Данные тест-кейса
-        prompt: Промт из файла
-        rules: Правила ревью из файла
-        
-    Returns:
-        Ответ ИИ с результатами ревью
-    """
-    if not AI_API_KEY:
-        print("ОШИБКА: Не указан API-ключ ИИ.")
-        print("Укажите AI_API_KEY в файле .env")
-        return "ОШИБКА: Не указан API-ключ ИИ. Укажите AI_API_KEY в файле .env"
-
-    provider = detect_ai_provider()
-    print(f"    Провайдер ИИ: {provider} ({AI_API_URL})")
 
     try:
-        if provider == "yandex":
-            return send_to_ai_yandex(test_case, prompt, rules)
-        elif provider == "gigachat":
-            return send_to_ai_gigachat(test_case, prompt, rules)
-        elif provider == "qwen":
-            return send_to_ai_qwen(test_case, prompt, rules)
-        else:  # openai, local, custom
-            return send_to_ai_openai(test_case, prompt, rules)
-        
-    except requests.exceptions.HTTPError as e:
-        error_msg = f"HTTP ошибка при обращении к ИИ: {e}"
-        error_msg += f"\n  URL: {AI_API_URL}"
-        error_msg += f"\n  Провайдер: {provider}"
-        error_msg += f"\n  Модель: {AI_MODEL}"
-        
-        if response.status_code == 404:
-            error_msg += "\n\nВОЗМОЖНЫЕ ПРИЧИНЫ 404:"
-            error_msg += "\n  1. Неправильный URL API. Проверьте AI_API_URL в .env"
-            error_msg += "\n  2. Модель не существует. Проверьте AI_MODEL"
-            error_msg += "\n  3. Эндпоинт изменился. Проверьте документацию провайдера"
-            error_msg += "\n  4. Для Qwen: не указан WorkspaceId в URL"
-            error_msg += "\n\nПРИМЕРЫ ПРАВИЛЬНЫХ URL:"
-            error_msg += "\n  OpenAI:    https://api.openai.com/v1/chat/completions"
-            error_msg += "\n  Qwen3.8:   https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
-            error_msg += "\n  Qwen3.8:   https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions (legacy)"
-            error_msg += "\n  YandexGPT: https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-            error_msg += "\n  GigaChat:  https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-            error_msg += "\n  Ollama:    http://localhost:11434/v1/chat/completions"
-            if provider == "qwen":
-                error_msg += "\n\nПОЛУЧЕНИЕ WORKSPACE ID ДЛЯ QWEN:"
-                error_msg += "\n  1. Войдите в консоль Alibaba Cloud Model Studio"
-                error_msg += "\n  2. Перейдите на страницу рабочего пространства"
-                error_msg += "\n  3. Скопируйте Workspace ID"
-                error_msg += "\n  4. Замените {WorkspaceId} в URL на реальный ID"
-        elif response.status_code == 401:
-            error_msg += "\n\nПроверьте AI_API_KEY в .env"
-        elif response.status_code == 429:
-            error_msg += "\n\nПревышен лимит запросов. Подождите и попробуйте снова."
-        
-        print(f"  {error_msg}")
-        return error_msg
-    except requests.exceptions.ConnectionError:
-        error_msg = f"Не удалось подключиться к ИИ API: {AI_API_URL}"
-        error_msg += "\n\nПРОВЕРЬТЕ:"
-        error_msg += "\n  1. Правильность URL в AI_API_URL"
-        error_msg += "\n  2. Доступность сервера (ping, curl)"
-        error_msg += "\n  3. Настройки прокси/файрвола"
-        print(f"  {error_msg}")
-        return error_msg
+        r = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except requests.HTTPError:
+        return f"HTTP ошибка {r.status_code}: {r.text[:500]}"
     except Exception as e:
-        error_msg = f"Ошибка при обращении к ИИ: {e}"
-        error_msg += f"\n  URL: {AI_API_URL}"
-        error_msg += f"\n  Провайдер: {provider}"
-        print(f"  {error_msg}")
-        return error_msg
+        return f"Ошибка: {e}"
 
 
-# ============================================================
-# СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
-# ============================================================
-
-def save_review_result(case_id: str, review_text: str, output_dir: str):
-    """
-    Сохранение результата ревью в файл.
-    
-    Формат имени файла: Ревью кейса_<id кейса>_<текущая дата и время>.txt
-    """
-    os.makedirs(output_dir, exist_ok=True)
-    
-    now = datetime.now()
-    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"Ревью кейса_{case_id}_{timestamp}.txt"
-    filepath = os.path.join(output_dir, filename)
-    
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(f"Результат ревью тест-кейса ID: {case_id}\n")
-        f.write(f"Дата и время: {now.strftime('%d.%m.%Y %H:%M:%S')}\n")
+# ── 4. Сохранение результата ─────────────────────────────────
+def save_result(case_id: str, text: str) -> str:
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"Ревью кейса_{case_id}_{ts}.txt"
+    path = os.path.join(OUTPUT_DIR, filename)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"Ревью тест-кейса ID: {case_id}\n")
+        f.write(f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n")
         f.write("=" * 60 + "\n\n")
-        f.write(review_text)
-    
-    print(f"    ✓ Результат сохранён: {filepath}")
-    return filepath
+        f.write(text)
+    print(f"    ✓ Сохранено: {path}")
+    return path
 
 
-# ============================================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-# ============================================================
-
-def parse_case_ids(case_ids_str: str) -> list[str]:
-    """Парсинг строки с ID кейсов в список."""
-    if not case_ids_str:
-        return []
-    return [cid.strip() for cid in case_ids_str.split(",") if cid.strip()]
-
-
-def print_config_summary(mode: str, space_id: str, case_ids: list, file_path: str):
-    """Вывод сводки текущей конфигурации."""
-    print("  Текущая конфигурация:")
-    print(f"    DOQA_BASE_URL  = {DOQA_BASE_URL}")
-    print(f"    DOQA_API_TOKEN = {'***' + DOQA_API_TOKEN[-4:] if DOQA_API_TOKEN else '(не задан)'}")
-    print(f"    AI_API_URL     = {AI_API_URL}")
-    print(f"    AI_MODEL       = {AI_MODEL}")
-    print(f"    AI_API_KEY     = {'***' + AI_API_KEY[-4:] if AI_API_KEY else '(не задан)'}")
-    print(f"    PROMPT_FILE    = {PROMPT_FILE}")
-    print(f"    RULES_FILE     = {RULES_FILE}")
-    print(f"    OUTPUT_DIR     = {OUTPUT_DIR}")
-
-
-# ============================================================
-# ГЛАВНАЯ ФУНКЦИЯ
-# ============================================================
-
+# ── Главная ──────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(
-        description="Утилита для ревью тест-кейсов DoQA с использованием ИИ",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-ПРИОРИТЕТ ПАРАМЕТРОВ (от высшего к низшему):
-  1. Аргументы командной строки (--mode, --space-id, ...)
-  2. Переменные окружения (DOQA_MODE, DOQA_SPACE_ID, ...)
-  3. Файл .env (в директории скрипта или текущей)
-  4. Значения по умолчанию
-
-ПРИМЕРЫ:
-
-  # Запуск только по .env (без аргументов):
-  python doqa_review.py
-
-  # Переопределить параметры из .env через CLI:
-  python doqa_review.py --mode file --file other_export.xlsx
-
-  # Указать отдельные параметры:
-  python doqa_review.py --space-id 999 --case-ids 111,222
-
-ДОКУМЕНТАЦИЯ:
-  См. README.md и .env.example
-        """
-    )
-
-    # Параметры источника данных
-    source_group = parser.add_argument_group("Источник тест-кейсов")
-    source_group.add_argument("--mode", choices=["api", "file"], default=None,
-                              help="Режим получения кейсов: api или file (по умолчанию из .env)")
-    source_group.add_argument("--space-id", type=str, default=None,
-                              help="ID пространства DoQA (для режима api)")
-    source_group.add_argument("--case-ids", type=str, default=None,
-                              help="Список ID тест-кейсов через запятую")
-    source_group.add_argument("--file", type=str, default=None,
-                              help="Путь к файлу экспорта DoQA (xlsx) (для режима file)")
-
-    # Параметры подключения
-    conn_group = parser.add_argument_group("Подключение")
-    conn_group.add_argument("--base-url", type=str, default=None,
-                            help="Базовый URL DoQA")
-    conn_group.add_argument("--token", type=str, default=None,
-                            help="API-токен DoQA")
-    conn_group.add_argument("--ai-url", type=str, default=None,
-                            help="URL ИИ API")
-    conn_group.add_argument("--ai-key", type=str, default=None,
-                            help="API-ключ ИИ")
-    conn_group.add_argument("--ai-model", type=str, default=None,
-                            help="Модель ИИ")
-
-    # Параметры файлов
-    files_group = parser.add_argument_group("Файлы")
-    files_group.add_argument("--prompt-file", type=str, default=None,
-                             help="Путь к файлу с промтом")
-    files_group.add_argument("--rules-file", type=str, default=None,
-                             help="Путь к файлу с правилами ревью")
-    files_group.add_argument("--output-dir", type=str, default=None,
-                             help="Директория для результатов")
-
-    # Специальные флаги
-    parser.add_argument("--show-config", action="store_true",
-                        help="Показать текущую конфигурацию и выйти")
-    parser.add_argument("--check-ai", action="store_true",
-                        help="Проверить подключение к ИИ API и выйти")
-
-    args = parser.parse_args()
-
-    # ============================================================
-    # ПРИМЕНЕНИЕ ПАРАМЕТРОВ
-    # Приоритет: CLI args > .env (уже загружен в os.environ) > defaults
-    # ============================================================
-
-    global DOQA_BASE_URL, DOQA_API_TOKEN, AI_API_URL, AI_API_KEY, AI_MODEL
-    global PROMPT_FILE, RULES_FILE, OUTPUT_DIR
-
-    # Переопределяем глобальные переменные из CLI (если указаны)
-    if args.base_url:
-        DOQA_BASE_URL = args.base_url
-    if args.token:
-        DOQA_API_TOKEN = args.token
-    if args.ai_url:
-        AI_API_URL = args.ai_url
-    if args.ai_key:
-        AI_API_KEY = args.ai_key
-    if args.ai_model:
-        AI_MODEL = args.ai_model
-    if args.prompt_file:
-        PROMPT_FILE = args.prompt_file
-    if args.rules_file:
-        RULES_FILE = args.rules_file
-    if args.output_dir:
-        OUTPUT_DIR = args.output_dir
-
-    # Определяем режим работы (CLI > .env > default)
-    mode = args.mode if args.mode else DOQA_MODE
-    
-    # Определяем space_id (CLI > .env)
-    space_id = args.space_id if args.space_id else DOQA_SPACE_ID
-    
-    # Определяем case_ids (CLI > .env)
-    if args.case_ids:
-        case_ids = parse_case_ids(args.case_ids)
-    else:
-        case_ids = parse_case_ids(DOQA_CASE_IDS)
-    
-    # Определяем файл (CLI > .env)
-    file_path = args.file if args.file else DOQA_FILE
-
-    # Показать конфигурацию и выйти
-    if args.show_config:
-        print("=" * 60)
-        print("  Текущая конфигурация (из .env + CLI)")
-        print("=" * 60)
-        print_config_summary(mode, space_id, case_ids, file_path)
-        print()
-        print(f"  Режим работы: {mode}")
-        print(f"  Space ID:     {space_id or '(не задан)'}")
-        print(f"  Case IDs:     {case_ids or '(все)'}")
-        print(f"  Файл:         {file_path or '(не задан)'}")
-        print("=" * 60)
-        sys.exit(0)
-
-    # Проверить подключение к ИИ и выйти
-    if args.check_ai:
-        print("=" * 60)
-        print("  Проверка подключения к ИИ API")
-        print("=" * 60)
-        print(f"\n  URL:     {AI_API_URL}")
-        print(f"  Модель:  {AI_MODEL}")
-        print(f"  Ключ:    {'***' + AI_API_KEY[-4:] if AI_API_KEY else '(не задан)'}")
-        
-        provider = detect_ai_provider()
-        print(f"  Провайдер (автоопределение): {provider}")
-        
-        print("\n  Отправка тестового запроса...")
-        
-        # Простой тестовый запрос
-        test_case = {
-            "id": "test",
-            "title": "Тестовый кейс",
-            "description": "Проверка подключения",
-            "steps": [{"number": 1, "action": "Тест", "expected_result": "Успех"}]
-        }
-        
-        result = send_to_ai(test_case, "Ответь одним словом: работает ли подключение?", "")
-        
-        if result.startswith("ОШИБКА") or "HTTP ошибка" in result:
-            print("\n  ❌ ПОДКЛЮЧЕНИЕ НЕ УДАЛОСЬ")
-            print(f"\n  Результат:\n{result}")
-            sys.exit(1)
-        else:
-            print("\n  ✅ ПОДКЛЮЧЕНИЕ УСПЕШНО")
-            print(f"\n  Ответ ИИ: {result[:200]}...")
-            sys.exit(0)
-
-    # ============================================================
-    # ВАЛИДАЦИЯ ПАРАМЕТРОВ
-    # ============================================================
-
-    if mode == "api" and not space_id:
-        print("ОШИБКА: Для режима 'api' необходимо указать space_id.")
-        print("  Укажите в .env: DOQA_SPACE_ID=<id>")
-        print("  Или через CLI:  --space-id <id>")
-        sys.exit(1)
-
-    if mode == "api" and not case_ids:
-        print("ОШИБКА: Необходимо указать хотя бы один ID кейса.")
-        print("  Укажите в .env: DOQA_CASE_IDS=456,789,101")
-        print("  Или через CLI:  --case-ids 456,789,101")
-        sys.exit(1)
-
-    if mode == "file" and not file_path:
-        print("ОШИБКА: Для режима 'file' необходимо указать путь к файлу.")
-        print("  Укажите в .env: DOQA_FILE=export.xlsx")
-        print("  Или через CLI:  --file export.xlsx")
-        sys.exit(1)
-
-    # ============================================================
-    # ВЫПОЛНЕНИЕ
-    # ============================================================
-
     print("=" * 60)
-    print("  Утилита ревью тест-кейсов DoQA с использованием ИИ")
+    print("  DoQA Review Tool — ревью тест-кейсов с ИИ")
     print("=" * 60)
-    
-    # Показываем откуда загружена конфигурация
-    env_loaded = _env_path.exists()
-    print(f"\n  Конфигурация загружена из: {'файл .env' if env_loaded else 'переменные окружения / значения по умолчанию'}")
-    if env_loaded:
-        print(f"  Путь к .env: {_env_path}")
+    print(f"  .env: {_env_path if _env_path.exists() else '(не найден, используются переменные окружения)'}")
+    print(f"  AI: {AI_MODEL} @ {AI_API_URL}")
 
-    # Шаг 1: Получение тест-кейсов
-    print(f"\n[Шаг 1] Получение тест-кейсов...")
-    
-    if mode == "api":
-        print(f"  Режим: API DoQA")
-        print(f"  Пространство: {space_id}")
-        print(f"  ID кейсов: {case_ids}")
-        test_cases = get_test_cases_from_api(space_id, case_ids)
+    # Определяем источник
+    if DOQA_FILE:
+        print(f"\n[1] Загрузка из файла: {DOQA_FILE}")
+        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] or None
+        cases = get_cases_from_file(DOQA_FILE, ids)
+    elif DOQA_SPACE_ID and DOQA_CASE_IDS:
+        print(f"\n[1] Загрузка через API DoQA (spaceId={DOQA_SPACE_ID})")
+        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
+        cases = get_cases_from_api(DOQA_SPACE_ID, ids)
     else:
-        print(f"  Режим: Файл экспорта")
-        print(f"  Файл: {file_path}")
-        if case_ids:
-            print(f"  ID кейсов (фильтр): {case_ids}")
-        else:
-            print(f"  Все кейсы из файла")
-        test_cases = get_test_cases_from_file(file_path, case_ids if case_ids else None)
+        sys.exit(
+            "ОШИБКА: Не указаны параметры в .env.\n"
+            "  Вариант 1 (API):  DOQA_SPACE_ID + DOQA_CASE_IDS\n"
+            "  Вариант 2 (файл): DOQA_FILE"
+        )
 
-    if not test_cases:
-        print("\nОШИБКА: Не удалось получить тест-кейсы")
-        sys.exit(1)
+    if not cases:
+        sys.exit("ОШИБКА: Не удалось получить тест-кейсы")
 
-    print(f"\n  Итого получено тест-кейсов: {len(test_cases)}")
+    print(f"\n  Получено кейсов: {len(cases)}")
 
-    # Шаг 2: Загрузка промта и правил
-    print("\n[Шаг 2] Загрузка промта и правил...")
-    prompt = load_prompt(PROMPT_FILE)
-    rules = load_rules(RULES_FILE)
-    print(f"  Промт загружен из: {PROMPT_FILE}")
-    print(f"  Правила загружены из: {RULES_FILE}")
+    # Загружаем промт и правила (перечитываются при каждом запуске)
+    print("\n[2] Загрузка промта и правил...")
+    prompt = _read_file(PROMPT_FILE)
+    rules = _read_file(RULES_FILE)
+    print(f"  Промт:   {PROMPT_FILE}")
+    print(f"  Правила: {RULES_FILE}")
 
-    # Шаг 3: Отправка в ИИ и сохранение результатов
-    print("\n[Шаг 3] Отправка тест-кейсов в ИИ для анализа...")
-    
-    results = []
-    for i, test_case in enumerate(test_cases, 1):
-        print(f"\n  Обработка кейса {i}/{len(test_cases)} (ID: {test_case['id']})...")
-        
-        # Отправляем каждый тест-кейс в ИИ по отдельности
-        review_result = send_to_ai(test_case, prompt, rules)
-        
-        # Сохраняем результат в файл
-        filepath = save_review_result(test_case["id"], review_result, OUTPUT_DIR)
-        results.append({"case_id": test_case["id"], "file": filepath})
+    # Ревью каждого кейса отдельно
+    print("\n[3] Отправка в ИИ...")
+    for i, case in enumerate(cases, 1):
+        print(f"\n  [{i}/{len(cases)}] Кейс {case['id']}: {case['title'][:50]}...")
+        result = review_case(case, prompt, rules)
+        save_result(case["id"], result)
 
-    # Итог
     print("\n" + "=" * 60)
-    print("  РЕЗУЛЬТАТ")
-    print("=" * 60)
-    print(f"  Обработано тест-кейсов: {len(test_cases)}")
-    print(f"  Результаты сохранены в: {os.path.abspath(OUTPUT_DIR)}")
-    print(f"  Файлы:")
-    for r in results:
-        print(f"    - {r['file']}")
+    print(f"  Готово! Результаты в: {os.path.abspath(OUTPUT_DIR)}")
     print("=" * 60)
 
 
