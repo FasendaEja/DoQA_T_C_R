@@ -28,6 +28,7 @@ DOQA_FILE = os.getenv("DOQA_FILE", "")
 AI_API_URL = os.getenv("AI_API_URL", "https://api.openai.com/v1/chat/completions")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
+AI_TIMEOUT = int(os.getenv("AI_TIMEOUT", "120"))
 
 PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
 RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
@@ -202,7 +203,7 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
     }
 
     try:
-        r = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+        r = requests.post(AI_API_URL, headers=headers, json=payload, timeout=AI_TIMEOUT)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
     except requests.HTTPError:
