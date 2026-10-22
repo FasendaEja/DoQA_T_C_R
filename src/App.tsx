@@ -203,6 +203,84 @@ AI_MODEL=qwen3.8-max`}</Code>
           для отладки.
         </p>
       </div>
+
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">🪟 Запуск под Windows</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">1. Установка Python</h4>
+            <ol className="list-decimal list-inside space-y-1 text-gray-600 text-sm">
+              <li>Скачайте Python 3.10+ с <a href="https://www.python.org/downloads/windows/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">официального сайта</a></li>
+              <li>При установке <strong>обязательно</strong> отметьте "Add Python to PATH"</li>
+              <li>Проверьте: <code className="bg-white px-1 rounded">python --version</code></li>
+            </ol>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">2. Виртуальное окружение</h4>
+            <Code lang="cmd">{`:: Создание
+python -m venv venv
+
+:: Активация
+venv\\Scripts\\activate`}</Code>
+            <p className="text-sm text-gray-500 mt-2">
+              Активируйте окружение перед каждым запуском (в начале строки появится <code>(venv)</code>)
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">3. Установка зависимостей</h4>
+            <Code lang="cmd">{`pip install -r requirements.txt`}</Code>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">4. Настройка .env</h4>
+            <Code lang="cmd">{`copy .env.example .env
+notepad .env`}</Code>
+            <p className="text-sm text-gray-500 mt-2">
+              Заполните параметры в открывшемся файле
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">5. Запуск</h4>
+            <Code lang="cmd">{`python doqa_review.py`}</Code>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">💡 Batch-файл для удобного запуска</h4>
+            <p className="text-gray-600 text-sm mb-2">
+              Создайте файл <code className="bg-white px-1 rounded">run.bat</code>:
+            </p>
+            <Code lang="batch">{`@echo off
+call venv\\Scripts\\activate
+python doqa_review.py
+pause`}</Code>
+            <p className="text-sm text-gray-500 mt-2">
+              Теперь можно запускать утилиту двойным кликом по <code>run.bat</code>
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+            <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Частые проблемы</h4>
+            <ul className="space-y-2 text-sm text-yellow-700">
+              <li>
+                <strong>python не распознаётся:</strong> Переустановите Python с отметкой "Add Python to PATH"
+              </li>
+              <li>
+                <strong>Ошибка установки зависимостей:</strong> <code className="bg-yellow-100 px-1 rounded">python -m pip install --upgrade pip</code>
+              </li>
+              <li>
+                <strong>Проблемы с кодировкой:</strong> Выполните <code className="bg-yellow-100 px-1 rounded">chcp 65001</code> или используйте PowerShell
+              </li>
+              <li>
+                <strong>.env не найден:</strong> Убедитесь, что файл называется <code className="bg-yellow-100 px-1 rounded">.env</code> (не <code>.env.txt</code>)
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
