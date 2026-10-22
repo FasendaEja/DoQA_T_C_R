@@ -22,6 +22,7 @@ load_dotenv(_env_path if _env_path.exists() else None)
 # ── Конфигурация ─────────────────────────────────────────────
 DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
 DOQA_TOKEN = os.getenv("DOQA_API_TOKEN", "")
+DOQA_MODE = os.getenv("DOQA_MODE", "").lower()  # api или file
 DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
 DOQA_CASE_IDS = os.getenv("DOQA_CASE_IDS", "")
 DOQA_FILE = os.getenv("DOQA_FILE", "")
@@ -317,20 +318,56 @@ def main():
     print(f"  .env: {_env_path if _env_path.exists() else '(не найден, используются переменные окружения)'}")
     print(f"  AI: {AI_MODEL} @ {AI_BASE_URL}")
 
-    # Определяем источник
-    if DOQA_FILE:
-        print(f"\n[1] Загрузка из файла: {DOQA_FILE}")
-        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] or None
-        cases = get_cases_from_file(DOQA_FILE, ids)
-    elif DOQA_SPACE_ID and DOQA_CASE_IDS:
-        print(f"\n[1] Загрузка через API DoQA (spaceId={DOQA_SPACE_ID})")
+    # Определяем источник тест-кейсов
+    if DOQA_MODE == "api":
+        # Режим API: требуется spaceId и caseIds
+        if not DOQA_SPACE_ID:
+            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_SPACE_ID в .env")
+        if not DOQA_CASE_IDS:
+            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_CASE_IDS в .env")
+        
+        print(f"\n[1] Режим: API DoQA")
+        print(f"    Пространство: {DOQA_SPACE_ID}")
         ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
+        print(f"    Кейсы: {ids}")
         cases = get_cases_from_api(DOQA_SPACE_ID, ids)
+        
+    elif DOQA_MODE == "file":
+        # Режим файла: требуется путь к файлу
+        if not DOQA_FILE:
+            sys.exit("ОШИБКА: DOQA_MODE=file, но не указан DOQA_FILE в .env")
+        
+        print(f"\n[1] Режим: Файл экспорта DoQA")
+        print(f"    Файл: {DOQA_FILE}")
+        # В режиме file можно указать caseIds для фильтрации (опционально)
+        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
+        if ids:
+            print(f"    Фильтр по кейсам: {ids}")
+        cases = get_cases_from_file(DOQA_FILE, ids)
+        
+    elif DOQA_MODE == "":
+        # Автоопределение (для обратной совместимости)
+        if DOQA_FILE:
+            print(f"\n[1] Режим: Файл экспорта DoQA (авто)")
+            print(f"    Файл: {DOQA_FILE}")
+            ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
+            cases = get_cases_from_file(DOQA_FILE, ids)
+        elif DOQA_SPACE_ID and DOQA_CASE_IDS:
+            print(f"\n[1] Режим: API DoQA (авто)")
+            print(f"    Пространство: {DOQA_SPACE_ID}")
+            ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
+            cases = get_cases_from_api(DOQA_SPACE_ID, ids)
+        else:
+            sys.exit(
+                "ОШИБКА: Не указан DOQA_MODE в .env.\n"
+                "  Укажите DOQA_MODE=api или DOQA_MODE=file\n"
+                "  Для api: заполните DOQA_SPACE_ID и DOQA_CASE_IDS\n"
+                "  Для file: заполните DOQA_FILE"
+            )
     else:
         sys.exit(
-            "ОШИБКА: Не указаны параметры в .env.\n"
-            "  Вариант 1 (API):  DOQA_SPACE_ID + DOQA_CASE_IDS\n"
-            "  Вариант 2 (файл): DOQA_FILE"
+            f"ОШИБКА: Неверное значение DOQA_MODE='{DOQA_MODE}' в .env\n"
+            "  Допустимые значения: api или file"
         )
 
     if not cases:

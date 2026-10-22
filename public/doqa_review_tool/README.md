@@ -46,9 +46,10 @@ doqa_review_tool/
 |---|---|
 | `DOQA_BASE_URL` | URL DoQA (по умолчанию `https://app.doqa.app`) |
 | `DOQA_API_TOKEN` | API-токен DoQA |
-| `DOQA_SPACE_ID` | ID пространства |
-| `DOQA_CASE_IDS` | ID кейсов через запятую |
-| `DOQA_FILE` | Путь к xlsx-файлу экспорта |
+| `DOQA_MODE` | Режим получения тест-кейсов: `api` или `file` |
+| `DOQA_SPACE_ID` | ID пространства (для режима `api`) |
+| `DOQA_CASE_IDS` | ID кейсов через запятую (для режима `api`, опционально для `file`) |
+| `DOQA_FILE` | Путь к xlsx-файлу экспорта (для режима `file`) |
 | `AI_BASE_URL` | Базовый URL API провайдера ИИ (без `/chat/completions`) |
 | `AI_API_KEY` | API-ключ ИИ |
 | `AI_MODEL` | Модель ИИ |

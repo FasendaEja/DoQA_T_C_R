@@ -107,12 +107,14 @@ function Setup() {
         <h3 className="font-semibold text-lg mb-3">2. Создание .env</h3>
         <Code>{`cp .env.example .env`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима файла:</p>
-        <Code lang="env">{`DOQA_FILE=export.xlsx
+        <Code lang="env">{`DOQA_MODE=file
+DOQA_FILE=export.xlsx
 AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
-        <Code lang="env">{`DOQA_SPACE_ID=123
+        <Code lang="env">{`DOQA_MODE=api
+DOQA_SPACE_ID=123
 DOQA_CASE_IDS=456,789,101
 DOQA_API_TOKEN=your_doqa_token
 AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
@@ -165,9 +167,10 @@ AI_MODEL=qwen3.8-max`}</Code>
               {[
                 ['DOQA_BASE_URL', 'URL DoQA (по умолчанию https://app.doqa.app)'],
                 ['DOQA_API_TOKEN', 'API-токен DoQA'],
-                ['DOQA_SPACE_ID', 'ID пространства (для режима API)'],
-                ['DOQA_CASE_IDS', 'ID кейсов через запятую'],
-                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима файла)'],
+                ['DOQA_MODE', 'Режим получения тест-кейсов: api или file'],
+                ['DOQA_SPACE_ID', 'ID пространства (для режима api)'],
+                ['DOQA_CASE_IDS', 'ID кейсов через запятую (для режима api, опционально для file)'],
+                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима file)'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -222,10 +225,11 @@ function Usage() {
         <h3 className="font-semibold text-lg mb-3">Как это работает</h3>
         <ol className="space-y-3 text-gray-600 list-decimal list-inside">
           <li>
-            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов:
+            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов по параметру <code className="bg-gray-100 px-1 rounded">DOQA_MODE</code>:
             <ul className="ml-6 mt-1 list-disc text-sm">
-              <li>Если указан <code>DOQA_FILE</code> — загружает из xlsx</li>
-              <li>Если указаны <code>DOQA_SPACE_ID</code> + <code>DOQA_CASE_IDS</code> — через API</li>
+              <li><code>DOQA_MODE=api</code> — загружает через API DoQA (требует <code>DOQA_SPACE_ID</code> и <code>DOQA_CASE_IDS</code>)</li>
+              <li><code>DOQA_MODE=file</code> — загружает из xlsx файла (требует <code>DOQA_FILE</code>)</li>
+              <li>Если <code>DOQA_MODE</code> не указан — автоопределение по наличию параметров</li>
             </ul>
           </li>
           <li>
