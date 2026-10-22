@@ -186,6 +186,21 @@ AI_MODEL=qwen3.8-max`}</Code>
           </table>
         </div>
       </div>
+
+      <div className="bg-green-50 border border-green-200 rounded-lg p-5">
+        <h3 className="font-semibold text-green-800 mb-2">✅ Поддержка Qwen3 (режим thinking)</h3>
+        <p className="text-green-700 mb-3">
+          Утилита автоматически обрабатывает ответы от <strong>Qwen3</strong> в режиме{' '}
+          <strong>thinking</strong>. Если модель кладёт ответ в поле{' '}
+          <code className="bg-green-100 px-1 rounded">reasoning_content</code> вместо{' '}
+          <code className="bg-green-100 px-1 rounded">content</code>, утилита автоматически
+          извлечёт его оттуда. Никаких дополнительных настроек не требуется.
+        </p>
+        <p className="text-green-700 text-sm">
+          Если ответ всё равно пустой — утилита выведет подробную диагностику структуры ответа
+          для отладки.
+        </p>
+      </div>
     </div>
   );
 }

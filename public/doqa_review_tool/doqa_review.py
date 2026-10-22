@@ -220,12 +220,33 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
         if not response.choices or len(response.choices) == 0:
             return "ОШИБКА: Пустой ответ от ИИ (нет choices)"
 
-        content = response.choices[0].message.content or ""
+        choice = response.choices[0]
+        message = choice.message
+
+        # Извлекаем контент:
+        # - Сначала пробуем content (стандартное поле)
+        # - Если пусто — берём reasoning_content (Qwen3 в режиме thinking)
+        content = getattr(message, "content", None) or ""
         if not content:
-            return "ОШИБКА: Пустой контент в ответе ИИ"
+            content = getattr(message, "reasoning_content", None) or ""
+            if content:
+                print(f"      ℹ Ответ извлечён из reasoning_content (режим thinking)")
+
+        # Если всё ещё пусто — выводим диагностику
+        if not content:
+            debug_info = f"ОШИБКА: Пустой контент в ответе ИИ.\n"
+            debug_info += f"  Модель: {AI_MODEL}\n"
+            debug_info += f"  finish_reason: {choice.finish_reason}\n"
+            debug_info += f"  Поля message: {[k for k in dir(message) if not k.startswith('_')]}\n"
+            try:
+                msg_dict = message.model_dump() if hasattr(message, "model_dump") else str(message)
+                debug_info += f"  Содержимое message: {str(msg_dict)[:500]}"
+            except Exception:
+                debug_info += f"  message (repr): {repr(message)[:500]}"
+            return debug_info
 
         # Показываем причину завершения
-        finish_reason = response.choices[0].finish_reason
+        finish_reason = choice.finish_reason
         if finish_reason == "length":
             print(f"      ⚠ Ответ обрезан (достигнут лимит токенов)")
         elif finish_reason == "content_filter":
