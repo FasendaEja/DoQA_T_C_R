@@ -368,26 +368,25 @@ def format_test_case_for_ai(test_case: dict) -> str:
     return "\n".join(parts)
 
 
-def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
-    """
-    Отправка тест-кейса в ИИ для анализа.
-    
-    Args:
-        test_case: Данные тест-кейса
-        prompt: Промт из файла
-        rules: Правила ревью из файла
-        
-    Returns:
-        Ответ ИИ с результатами ревью
-    """
-    if not AI_API_KEY:
-        print("ОШИБКА: Не указан API-ключ ИИ.")
-        print("Укажите AI_API_KEY в файле .env")
-        return "ОШИБКА: Не указан API-ключ ИИ. Укажите AI_API_KEY в файле .env"
+def detect_ai_provider() -> str:
+    """Определение провайдера ИИ по URL."""
+    url_lower = AI_API_URL.lower()
+    if "openai.com" in url_lower:
+        return "openai"
+    elif "yandex" in url_lower or "cloud.yandex" in url_lower:
+        return "yandex"
+    elif "gigachat" in url_lower or "sberbank" in url_lower:
+        return "gigachat"
+    elif "localhost" in url_lower or "127.0.0.1" in url_lower:
+        return "local"
+    else:
+        return "custom"
 
+
+def send_to_ai_openai(test_case: dict, prompt: str, rules: str) -> str:
+    """Отправка запроса к OpenAI-совместимому API."""
     case_text = format_test_case_for_ai(test_case)
     
-    # Формируем полное сообщение для ИИ
     full_message = f"""{prompt}
 
 === ПРАВИЛА ПРОВЕРКИ ===
@@ -418,27 +417,165 @@ def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
         "max_tokens": 4000
     }
 
-    try:
-        response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
-        response.raise_for_status()
+    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
+def send_to_ai_yandex(test_case: dict, prompt: str, rules: str) -> str:
+    """Отправка запроса к YandexGPT API."""
+    case_text = format_test_case_for_ai(test_case)
+    
+    full_message = f"""{prompt}
+
+=== ПРАВИЛА ПРОВЕРКИ ===
+{rules}
+
+=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
+{case_text}
+"""
+
+    # YandexGPT использует другой формат запроса
+    headers = {
+        "Authorization": f"Api-Key {AI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "modelUri": f"gpt://{AI_MODEL}",  # или "yandexgpt" для стандартной модели
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.3,
+            "maxTokens": "4000"
+        },
+        "messages": [
+            {
+                "role": "system",
+                "text": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
+            },
+            {
+                "role": "user",
+                "text": full_message
+            }
+        ]
+    }
+
+    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    
+    result = response.json()
+    return result["result"]["alternatives"][0]["message"]["text"]
+
+
+def send_to_ai_gigachat(test_case: dict, prompt: str, rules: str) -> str:
+    """Отправка запроса к GigaChat API."""
+    case_text = format_test_case_for_ai(test_case)
+    
+    full_message = f"""{prompt}
+
+=== ПРАВИЛА ПРОВЕРКИ ===
+{rules}
+
+=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
+{case_text}
+"""
+
+    # GigaChat использует OpenAI-совместимый формат, но с другой авторизацией
+    headers = {
+        "Authorization": f"Bearer {AI_API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    payload = {
+        "model": AI_MODEL,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
+            },
+            {
+                "role": "user",
+                "content": full_message
+            }
+        ],
+        "temperature": 0.3,
+        "max_tokens": 4000
+    }
+
+    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
+def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
+    """
+    Отправка тест-кейса в ИИ для анализа.
+    Автоматически определяет провайдера и использует правильный формат запроса.
+    
+    Args:
+        test_case: Данные тест-кейса
+        prompt: Промт из файла
+        rules: Правила ревью из файла
         
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
+    Returns:
+        Ответ ИИ с результатами ревью
+    """
+    if not AI_API_KEY:
+        print("ОШИБКА: Не указан API-ключ ИИ.")
+        print("Укажите AI_API_KEY в файле .env")
+        return "ОШИБКА: Не указан API-ключ ИИ. Укажите AI_API_KEY в файле .env"
+
+    provider = detect_ai_provider()
+    print(f"    Провайдер ИИ: {provider} ({AI_API_URL})")
+
+    try:
+        if provider == "yandex":
+            return send_to_ai_yandex(test_case, prompt, rules)
+        elif provider == "gigachat":
+            return send_to_ai_gigachat(test_case, prompt, rules)
+        else:  # openai, local, custom
+            return send_to_ai_openai(test_case, prompt, rules)
         
     except requests.exceptions.HTTPError as e:
         error_msg = f"HTTP ошибка при обращении к ИИ: {e}"
-        if response.status_code == 401:
-            error_msg += "\nПроверьте AI_API_KEY в .env"
+        error_msg += f"\n  URL: {AI_API_URL}"
+        error_msg += f"\n  Провайдер: {provider}"
+        error_msg += f"\n  Модель: {AI_MODEL}"
+        
+        if response.status_code == 404:
+            error_msg += "\n\nВОЗМОЖНЫЕ ПРИЧИНЫ 404:"
+            error_msg += "\n  1. Неправильный URL API. Проверьте AI_API_URL в .env"
+            error_msg += "\n  2. Модель не существует. Проверьте AI_MODEL"
+            error_msg += "\n  3. Эндпоинт изменился. Проверьте документацию провайдера"
+            error_msg += "\n\nПРИМЕРЫ ПРАВИЛЬНЫХ URL:"
+            error_msg += "\n  OpenAI:    https://api.openai.com/v1/chat/completions"
+            error_msg += "\n  YandexGPT: https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+            error_msg += "\n  GigaChat:  https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
+            error_msg += "\n  Ollama:    http://localhost:11434/v1/chat/completions"
+        elif response.status_code == 401:
+            error_msg += "\n\nПроверьте AI_API_KEY в .env"
         elif response.status_code == 429:
-            error_msg += "\nПревышен лимит запросов. Подождите и попробуйте снова."
+            error_msg += "\n\nПревышен лимит запросов. Подождите и попробуйте снова."
+        
         print(f"  {error_msg}")
         return error_msg
     except requests.exceptions.ConnectionError:
         error_msg = f"Не удалось подключиться к ИИ API: {AI_API_URL}"
+        error_msg += "\n\nПРОВЕРЬТЕ:"
+        error_msg += "\n  1. Правильность URL в AI_API_URL"
+        error_msg += "\n  2. Доступность сервера (ping, curl)"
+        error_msg += "\n  3. Настройки прокси/файрвола"
         print(f"  {error_msg}")
         return error_msg
     except Exception as e:
         error_msg = f"Ошибка при обращении к ИИ: {e}"
+        error_msg += f"\n  URL: {AI_API_URL}"
+        error_msg += f"\n  Провайдер: {provider}"
         print(f"  {error_msg}")
         return error_msg
 
@@ -558,9 +695,11 @@ def main():
     files_group.add_argument("--output-dir", type=str, default=None,
                              help="Директория для результатов")
 
-    # Специальный флаг для показа текущей конфигурации
+    # Специальные флаги
     parser.add_argument("--show-config", action="store_true",
                         help="Показать текущую конфигурацию и выйти")
+    parser.add_argument("--check-ai", action="store_true",
+                        help="Проверить подключение к ИИ API и выйти")
 
     args = parser.parse_args()
 
@@ -618,6 +757,39 @@ def main():
         print(f"  Файл:         {file_path or '(не задан)'}")
         print("=" * 60)
         sys.exit(0)
+
+    # Проверить подключение к ИИ и выйти
+    if args.check_ai:
+        print("=" * 60)
+        print("  Проверка подключения к ИИ API")
+        print("=" * 60)
+        print(f"\n  URL:     {AI_API_URL}")
+        print(f"  Модель:  {AI_MODEL}")
+        print(f"  Ключ:    {'***' + AI_API_KEY[-4:] if AI_API_KEY else '(не задан)'}")
+        
+        provider = detect_ai_provider()
+        print(f"  Провайдер (автоопределение): {provider}")
+        
+        print("\n  Отправка тестового запроса...")
+        
+        # Простой тестовый запрос
+        test_case = {
+            "id": "test",
+            "title": "Тестовый кейс",
+            "description": "Проверка подключения",
+            "steps": [{"number": 1, "action": "Тест", "expected_result": "Успех"}]
+        }
+        
+        result = send_to_ai(test_case, "Ответь одним словом: работает ли подключение?", "")
+        
+        if result.startswith("ОШИБКА") or "HTTP ошибка" in result:
+            print("\n  ❌ ПОДКЛЮЧЕНИЕ НЕ УДАЛОСЬ")
+            print(f"\n  Результат:\n{result}")
+            sys.exit(1)
+        else:
+            print("\n  ✅ ПОДКЛЮЧЕНИЕ УСПЕШНО")
+            print(f"\n  Ответ ИИ: {result[:200]}...")
+            sys.exit(0)
 
     # ============================================================
     # ВАЛИДАЦИЯ ПАРАМЕТРОВ

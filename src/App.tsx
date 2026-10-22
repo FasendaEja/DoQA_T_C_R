@@ -560,6 +560,43 @@ function NotesTab() {
       <h2 className="text-2xl font-bold text-gray-800">Важные замечания</h2>
 
       <div className="bg-red-50 border border-red-200 rounded-lg p-5">
+        <h3 className="font-semibold text-red-800 mb-2">🔴 Ошибка 404 при обращении к ИИ</h3>
+        <p className="text-red-700 mb-3">
+          Если вы получаете ошибку <code className="bg-red-100 px-1 rounded">404 Client Error: Not Found</code>,
+          это означает, что URL API неверный.
+        </p>
+        
+        <div className="bg-white border border-red-200 rounded-lg p-4 mb-3">
+          <h4 className="font-semibold text-red-800 mb-2">Шаги для диагностики:</h4>
+          <ol className="space-y-2 text-red-700 text-sm list-decimal list-inside">
+            <li>
+              <strong>Проверьте подключение к ИИ:</strong>
+              <CodeBlock>{`python doqa_review.py --check-ai`}</CodeBlock>
+            </li>
+            <li>
+              <strong>Проверьте URL в .env</strong> — убедитесь, что он соответствует вашему провайдеру
+            </li>
+            <li>
+              <strong>Проверьте модель</strong> — убедитесь, что она существует у провайдера
+            </li>
+          </ol>
+        </div>
+
+        <h4 className="font-semibold text-red-800 mb-2">Примеры правильных URL:</h4>
+        <CodeBlock language="env">{`# OpenAI
+AI_API_URL=https://api.openai.com/v1/chat/completions
+
+# YandexGPT
+AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+
+# GigaChat
+AI_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
+
+# Ollama (локально)
+AI_API_URL=http://localhost:11434/v1/chat/completions`}</CodeBlock>
+      </div>
+
+      <div className="bg-red-50 border border-red-200 rounded-lg p-5">
         <h3 className="font-semibold text-red-800 mb-2">🔴 Ограничения по API DoQA</h3>
         <p className="text-red-700">
           Точные эндпоинты публичного API DoQA доступны только через Swagger UI,
