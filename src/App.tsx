@@ -48,14 +48,14 @@ function Overview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h3 className="font-semibold text-lg mb-3">📥 Источник тест-кейсов</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>✓ Через API DoQA: <code className="bg-gray-100 px-1 rounded text-sm">GET /api/cases/{'{caseId}'}</code></li>
-            <li>✓ Из файла экспорта DoQA (xlsx)</li>
-          </ul>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">📥 3 режима получения тест-кейсов</h3>
+        <ul className="space-y-2 text-gray-600">
+          <li>✓ <strong>Режим 1 (api):</strong> Через API DoQA — <code className="bg-gray-100 px-1 rounded text-sm">GET /api/cases/{'{caseId}'}</code></li>
+          <li>✓ <strong>Режим 2 (file):</strong> Из локального файла экспорта DoQA (xlsx)</li>
+          <li>✓ <strong>Режим 3 (export):</strong> Экспорт через API — <code className="bg-gray-100 px-1 rounded text-sm">POST /api/cases/export</code> с фильтрами</li>
+        </ul>
+      </div>        <div className="bg-white border border-gray-200 rounded-lg p-5">
           <h3 className="font-semibold text-lg mb-3">🧠 Анализ ИИ</h3>
           <ul className="space-y-2 text-gray-600">
             <li>✓ Каждый кейс — отдельный запрос</li>
@@ -107,14 +107,24 @@ function Setup() {
         <h3 className="font-semibold text-lg mb-3">2. Создание .env</h3>
         <Code>{`cp .env.example .env`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима файла:</p>
-        <Code lang="env">{`DOQA_FILE=export.xlsx
+        <Code lang="env">{`DOQA_MODE=file
+DOQA_FILE=export.xlsx
 AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
-        <Code lang="env">{`DOQA_SPACE_ID=123
+        <Code lang="env">{`DOQA_MODE=api
+DOQA_SPACE_ID=123
 DOQA_CASE_IDS=456,789,101
 DOQA_API_TOKEN=your_doqa_token
+AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max`}</Code>
+        <p className="text-gray-600 mt-3">Минимальный .env для режима экспорта:</p>
+        <Code lang="env">{`DOQA_MODE=export
+DOQA_SPACE_ID=123
+DOQA_API_TOKEN=your_doqa_token
+DOQA_EXPORT_MODE=status_hour
 AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
@@ -165,9 +175,12 @@ AI_MODEL=qwen3.8-max`}</Code>
               {[
                 ['DOQA_BASE_URL', 'URL DoQA (по умолчанию https://app.doqa.app)'],
                 ['DOQA_API_TOKEN', 'API-токен DoQA'],
-                ['DOQA_SPACE_ID', 'ID пространства (для режима API)'],
-                ['DOQA_CASE_IDS', 'ID кейсов через запятую'],
-                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима файла)'],
+                ['DOQA_MODE', 'Режим получения тест-кейсов: api, file или export'],
+                ['DOQA_SPACE_ID', 'ID пространства (для режимов api и export)'],
+                ['DOQA_CASE_IDS', 'ID кейсов через запятую (для режима api, опционально для file)'],
+                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима file)'],
+                ['DOQA_EXPORT_MODE', 'Подвариант экспорта: all, status, status_hour (по умолчанию), status_day, custom_status'],
+                ['DOQA_CUSTOM_STATUSES', 'Список статусов через запятую для DOQA_EXPORT_MODE=custom_status'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -222,10 +235,12 @@ function Usage() {
         <h3 className="font-semibold text-lg mb-3">Как это работает</h3>
         <ol className="space-y-3 text-gray-600 list-decimal list-inside">
           <li>
-            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов:
+            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов по параметру <code className="bg-gray-100 px-1 rounded">DOQA_MODE</code>:
             <ul className="ml-6 mt-1 list-disc text-sm">
-              <li>Если указан <code>DOQA_FILE</code> — загружает из xlsx</li>
-              <li>Если указаны <code>DOQA_SPACE_ID</code> + <code>DOQA_CASE_IDS</code> — через API</li>
+              <li><code>DOQA_MODE=api</code> — загружает через API DoQA по ID кейсов</li>
+              <li><code>DOQA_MODE=file</code> — загружает из локального xlsx файла</li>
+              <li><code>DOQA_MODE=export</code> — экспортирует через API с фильтрами по статусу и времени</li>
+              <li>Если <code>DOQA_MODE</code> не указан — автоопределение по наличию параметров</li>
             </ul>
           </li>
           <li>
@@ -234,6 +249,45 @@ function Usage() {
           <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
           <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
         </ol>
+      </div>
+
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">🚀 Режим 3: Экспорт через API DoQA</h3>
+        <p className="text-gray-600 mb-3">
+          Экспортирует тест-кейсы через <code className="bg-white px-1 rounded">POST /api/cases/export</code> с фильтрами.
+          Подварианты фильтрации задаются параметром <code className="bg-white px-1 rounded">DOQA_EXPORT_MODE</code>:
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse bg-white rounded">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-200 px-3 py-2 text-left">Значение</th>
+                <th className="border border-gray-200 px-3 py-2 text-left">Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['all', 'Все кейсы из пространства'],
+                ['status', 'Кейсы со статусами: review, error, draft'],
+                ['status_hour', 'Статусы review/error/draft + изменённые за последний час (по умолчанию)'],
+                ['status_day', 'Статусы review/error/draft + изменённые за последние сутки'],
+                ['custom_status', 'Кейсы с выбором статуса (укажите в DOQA_CUSTOM_STATUSES)'],
+              ].map(([val, desc]) => (
+                <tr key={val} className="hover:bg-gray-50">
+                  <td className="border border-gray-200 px-3 py-1.5 font-mono text-xs">{val}</td>
+                  <td className="border border-gray-200 px-3 py-1.5">{desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4">
+          <p className="text-gray-600 mb-2"><strong>Пример .env:</strong></p>
+          <Code lang="env">{`DOQA_MODE=export
+DOQA_SPACE_ID=123
+DOQA_API_TOKEN=your_token
+DOQA_EXPORT_MODE=status_hour`}</Code>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -292,6 +346,31 @@ function Api() {
         <Code>{`curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Accept: application/json"`}</Code>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Эндпоинт экспорта тест-кейсов</h3>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <code className="text-lg font-mono text-blue-700">
+            POST /api/cases/export
+          </code>
+        </div>
+        <p className="text-gray-600 mb-3">Экспортирует тест-кейсы в формате xlsx с фильтрами:</p>
+        <ul className="space-y-2 text-gray-600 mb-4">
+          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">spaceId</code> — ID пространства (обязательный)</li>
+          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">status</code> — массив статусов (review, error, draft, ready, obsolete)</li>
+          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">modifiedAfter</code> — ISO-8601 timestamp (кейсы изменённые после указанной даты)</li>
+        </ul>
+        <Code>{`curl -X POST "https://app.doqa.app/api/cases/export" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "spaceId": "123",
+    "status": ["review", "error", "draft"],
+    "modifiedAfter": "2024-01-15T10:00:00"
+  }' \\
+  --output export.xlsx`}</Code>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
