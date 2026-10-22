@@ -114,6 +114,30 @@ DOQA_FILE=export.xlsx
 AI_API_KEY=your_ai_key
 ```
 
+**С Qwen3.8 (Alibaba Cloud Model Studio):**
+```env
+# ВАЖНО: замените {WorkspaceId} на ваш реальный ID рабочего пространства
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max
+```
+
+**Получение Workspace ID для Qwen:**
+1. Войдите в [консоль Alibaba Cloud Model Studio](https://modelstudio.console.alibabacloud.com/)
+2. Перейдите на страницу рабочего пространства
+3. Скопируйте Workspace ID
+4. Замените `{WorkspaceId}` в URL на реальный ID
+
+**Получение API-ключа для Qwen:**
+1. Откройте [страницу управления API-ключами](https://modelstudio.console.alibabacloud.com/model/settings/api-key)
+2. Создайте новый ключ
+3. Скопируйте значение (начинается с `sk-`)
+
+**Доступные модели Qwen:**
+- `qwen3.8-max` — максимальное качество
+- `qwen3.8-flash` — быстрая и экономичная
+- `qwen3.7-max`, `qwen3.7-plus`, `qwen3.7-flash` — предыдущие версии
+
 **С YandexGPT:**
 ```env
 AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion

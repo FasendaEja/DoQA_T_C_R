@@ -309,6 +309,41 @@ python doqa_review.py \\
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Использование с Qwen3.8 (Alibaba Cloud)</h3>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <h4 className="font-semibold text-blue-800 mb-2">📝 Настройка .env для Qwen3.8:</h4>
+          <CodeBlock language="env">{`# ВАЖНО: замените {WorkspaceId} на ваш реальный ID
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max`}</CodeBlock>
+        </div>
+        
+        <div className="space-y-3 text-gray-600">
+          <p><strong>Получение Workspace ID:</strong></p>
+          <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
+            <li>Войдите в <a href="https://modelstudio.console.alibabacloud.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">консоль Alibaba Cloud Model Studio</a></li>
+            <li>Перейдите на страницу рабочего пространства</li>
+            <li>Скопируйте Workspace ID</li>
+            <li>Замените <code className="bg-gray-100 px-1 rounded">{'{WorkspaceId}'}</code> в URL на реальный ID</li>
+          </ol>
+          
+          <p className="mt-3"><strong>Получение API-ключа:</strong></p>
+          <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
+            <li>Откройте <a href="https://modelstudio.console.alibabacloud.com/model/settings/api-key" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">страницу управления API-ключами</a></li>
+            <li>Создайте новый ключ</li>
+            <li>Скопируйте значение (начинается с <code className="bg-gray-100 px-1 rounded">sk-</code>)</li>
+          </ol>
+          
+          <p className="mt-3"><strong>Доступные модели Qwen:</strong></p>
+          <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
+            <li><code className="bg-gray-100 px-1 rounded">qwen3.8-max</code> — максимальное качество</li>
+            <li><code className="bg-gray-100 px-1 rounded">qwen3.8-flash</code> — быстрая и экономичная</li>
+            <li><code className="bg-gray-100 px-1 rounded">qwen3.7-max</code>, <code className="bg-gray-100 px-1 rounded">qwen3.7-plus</code>, <code className="bg-gray-100 px-1 rounded">qwen3.7-flash</code> — предыдущие версии</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
         <h3 className="font-semibold text-lg mb-3">Использование с другими ИИ-провайдерами</h3>
         <CodeBlock>{`# YandexGPT
 export AI_API_URL="https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
@@ -586,6 +621,13 @@ function NotesTab() {
         <CodeBlock language="env">{`# OpenAI
 AI_API_URL=https://api.openai.com/v1/chat/completions
 
+# Qwen3.8 (Alibaba Cloud)
+# ВАЖНО: замените {WorkspaceId} на ваш реальный ID
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+
+# Qwen3.8 (legacy URL)
+AI_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+
 # YandexGPT
 AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
 
@@ -594,6 +636,14 @@ AI_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
 
 # Ollama (локально)
 AI_API_URL=http://localhost:11434/v1/chat/completions`}</CodeBlock>
+        
+        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+          <p className="text-yellow-800 text-sm">
+            <strong>⚠️ Для Qwen:</strong> Если получаете 404, проверьте что в URL указан реальный WorkspaceId 
+            (не текст <code className="bg-yellow-100 px-1 rounded">{'{WorkspaceId}'}</code>). 
+            Получить его можно в консоли Alibaba Cloud Model Studio.
+          </p>
+        </div>
       </div>
 
       <div className="bg-red-50 border border-red-200 rounded-lg p-5">

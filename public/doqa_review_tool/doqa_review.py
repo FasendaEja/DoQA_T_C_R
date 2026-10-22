@@ -373,6 +373,8 @@ def detect_ai_provider() -> str:
     url_lower = AI_API_URL.lower()
     if "openai.com" in url_lower:
         return "openai"
+    elif "aliyuncs.com" in url_lower or "dashscope" in url_lower:
+        return "qwen"
     elif "yandex" in url_lower or "cloud.yandex" in url_lower:
         return "yandex"
     elif "gigachat" in url_lower or "sberbank" in url_lower:
@@ -512,6 +514,56 @@ def send_to_ai_gigachat(test_case: dict, prompt: str, rules: str) -> str:
     return result["choices"][0]["message"]["content"]
 
 
+def send_to_ai_qwen(test_case: dict, prompt: str, rules: str) -> str:
+    """
+    Отправка запроса к Qwen API (Alibaba Cloud Model Studio / DashScope).
+    
+    Qwen использует OpenAI-совместимый формат через endpoint:
+    https://{WorkspaceId}.{region}.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+    
+    Или legacy URL:
+    https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    """
+    case_text = format_test_case_for_ai(test_case)
+    
+    full_message = f"""{prompt}
+
+=== ПРАВИЛА ПРОВЕРКИ ===
+{rules}
+
+=== ТЕСТ-КЕЙС ДЛЯ АНАЛИЗА ===
+{case_text}
+"""
+
+    # Qwen использует стандартную Bearer-авторизацию как OpenAI
+    headers = {
+        "Authorization": f"Bearer {AI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": AI_MODEL,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Ты — опытный QA-инженер, проводящий ревью тест-кейсов. Отвечай на русском языке."
+            },
+            {
+                "role": "user",
+                "content": full_message
+            }
+        ],
+        "temperature": 0.3,
+        "max_tokens": 4000
+    }
+
+    response = requests.post(AI_API_URL, headers=headers, json=payload, timeout=120)
+    response.raise_for_status()
+    
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
+
+
 def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
     """
     Отправка тест-кейса в ИИ для анализа.
@@ -538,6 +590,8 @@ def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
             return send_to_ai_yandex(test_case, prompt, rules)
         elif provider == "gigachat":
             return send_to_ai_gigachat(test_case, prompt, rules)
+        elif provider == "qwen":
+            return send_to_ai_qwen(test_case, prompt, rules)
         else:  # openai, local, custom
             return send_to_ai_openai(test_case, prompt, rules)
         
@@ -552,11 +606,20 @@ def send_to_ai(test_case: dict, prompt: str, rules: str) -> str:
             error_msg += "\n  1. Неправильный URL API. Проверьте AI_API_URL в .env"
             error_msg += "\n  2. Модель не существует. Проверьте AI_MODEL"
             error_msg += "\n  3. Эндпоинт изменился. Проверьте документацию провайдера"
+            error_msg += "\n  4. Для Qwen: не указан WorkspaceId в URL"
             error_msg += "\n\nПРИМЕРЫ ПРАВИЛЬНЫХ URL:"
             error_msg += "\n  OpenAI:    https://api.openai.com/v1/chat/completions"
+            error_msg += "\n  Qwen3.8:   https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
+            error_msg += "\n  Qwen3.8:   https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions (legacy)"
             error_msg += "\n  YandexGPT: https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
             error_msg += "\n  GigaChat:  https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
             error_msg += "\n  Ollama:    http://localhost:11434/v1/chat/completions"
+            if provider == "qwen":
+                error_msg += "\n\nПОЛУЧЕНИЕ WORKSPACE ID ДЛЯ QWEN:"
+                error_msg += "\n  1. Войдите в консоль Alibaba Cloud Model Studio"
+                error_msg += "\n  2. Перейдите на страницу рабочего пространства"
+                error_msg += "\n  3. Скопируйте Workspace ID"
+                error_msg += "\n  4. Замените {WorkspaceId} в URL на реальный ID"
         elif response.status_code == 401:
             error_msg += "\n\nПроверьте AI_API_KEY в .env"
         elif response.status_code == 429:
