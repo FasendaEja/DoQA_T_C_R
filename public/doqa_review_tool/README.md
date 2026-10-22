@@ -114,6 +114,30 @@ DOQA_FILE=export.xlsx
 AI_API_KEY=your_ai_key
 ```
 
+**С Qwen3.8 (Alibaba Cloud Model Studio):**
+```env
+# ВАЖНО: замените {WorkspaceId} на ваш реальный ID рабочего пространства
+AI_API_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions
+AI_API_KEY=sk-xxxxxxxxxxxxxxxx
+AI_MODEL=qwen3.8-max
+```
+
+**Получение Workspace ID для Qwen:**
+1. Войдите в [консоль Alibaba Cloud Model Studio](https://modelstudio.console.alibabacloud.com/)
+2. Перейдите на страницу рабочего пространства
+3. Скопируйте Workspace ID
+4. Замените `{WorkspaceId}` в URL на реальный ID
+
+**Получение API-ключа для Qwen:**
+1. Откройте [страницу управления API-ключами](https://modelstudio.console.alibabacloud.com/model/settings/api-key)
+2. Создайте новый ключ
+3. Скопируйте значение (начинается с `sk-`)
+
+**Доступные модели Qwen:**
+- `qwen3.8-max` — максимальное качество
+- `qwen3.8-flash` — быстрая и экономичная
+- `qwen3.7-max`, `qwen3.7-plus`, `qwen3.7-flash` — предыдущие версии
+
 **С YandexGPT:**
 ```env
 AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
@@ -148,6 +172,68 @@ doqa_review_tool/
     ├── Ревью кейса_456_2024-01-15_14-30-00.txt
     └── Ревью кейса_789_2024-01-15_14-30-05.txt
 ```
+
+## Диагностика ошибок
+
+### Ошибка 404 при обращении к ИИ
+
+Если вы получаете ошибку `404 Client Error: Not Found`, это означает, что URL API неверный.
+
+**Шаги для диагностики:**
+
+1. **Проверьте подключение к ИИ:**
+   ```bash
+   python doqa_review.py --check-ai
+   ```
+   Эта команда отправит тестовый запрос и покажет подробную информацию об ошибке.
+
+2. **Проверьте URL в .env:**
+   - Убедитесь, что URL соответствует вашему провайдеру
+   - Проверьте, что нет опечаток
+   - Убедитесь, что URL заканчивается правильно (обычно `/v1/chat/completions`)
+
+3. **Примеры правильных URL:**
+   ```env
+   # OpenAI
+   AI_API_URL=https://api.openai.com/v1/chat/completions
+   
+   # YandexGPT
+   AI_API_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+   
+   # GigaChat
+   AI_API_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
+   
+   # Ollama (локально)
+   AI_API_URL=http://localhost:11434/v1/chat/completions
+   ```
+
+4. **Проверьте модель:**
+   - Убедитесь, что модель существует у вашего провайдера
+   - Для OpenAI: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+   - Для YandexGPT: `yandexgpt`, `yandexgpt-lite`
+   - Для GigaChat: `GigaChat`, `GigaChat-Pro`
+
+5. **Проверьте API-ключ:**
+   - Убедитесь, что ключ активен и не истёк
+   - Проверьте, что у ключа есть доступ к выбранной модели
+
+### Другие частые ошибки
+
+**Ошибка 401 (Unauthorized):**
+- Неверный API-ключ
+- Ключ истёк или отозван
+- Недостаточно прав для выбранной модели
+
+**Ошибка 429 (Too Many Requests):**
+- Превышен лимит запросов
+- Подождите несколько минут и попробуйте снова
+- Уменьшите количество кейсов или увеличьте интервал между запросами
+
+**Ошибка ConnectionError:**
+- Сервер недоступен
+- Проверьте интернет-соединение
+- Проверьте настройки прокси/файрвола
+- Для локальных моделей (Ollama) — убедитесь, что сервер запущен
 
 ## Примечания по API DoQA
 
