@@ -171,7 +171,6 @@ AI_MODEL=qwen3.8-max`}</Code>
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
-                ['AI_ENABLE_THINKING', 'Режим "thinking" для Qwen3 (true/false, по умолчанию false)'],
                 ['AI_TIMEOUT', 'Таймаут ожидания ответа ИИ в секундах (по умолчанию 120)'],
                 ['AI_MAX_RETRIES', 'Максимум попыток при ошибке (по умолчанию 3, управляется OpenAI SDK)'],
                 ['PROMPT_FILE', 'Путь к файлу с промтом'],
@@ -188,27 +187,19 @@ AI_MODEL=qwen3.8-max`}</Code>
         </div>
       </div>
 
-      <div className="bg-red-50 border border-red-200 rounded-lg p-5">
-        <h3 className="font-semibold text-red-800 mb-2">🔴 "Пустой контент в ответе ИИ" (Qwen3)</h3>
-        <p className="text-red-700 mb-3">
-          Если вы используете <strong>Qwen3</strong> и получаете ошибку "Пустой контент",
-          это связано с режимом <strong>thinking</strong> — модель кладёт ответ в поле{' '}
-          <code className="bg-red-100 px-1 rounded">reasoning_content</code>, а не в{' '}
-          <code className="bg-red-100 px-1 rounded">content</code>.
+      <div className="bg-green-50 border border-green-200 rounded-lg p-5">
+        <h3 className="font-semibold text-green-800 mb-2">✅ Поддержка Qwen3 (режим thinking)</h3>
+        <p className="text-green-700 mb-3">
+          Утилита автоматически обрабатывает ответы от <strong>Qwen3</strong> в режиме{' '}
+          <strong>thinking</strong>. Если модель кладёт ответ в поле{' '}
+          <code className="bg-green-100 px-1 rounded">reasoning_content</code> вместо{' '}
+          <code className="bg-green-100 px-1 rounded">content</code>, утилита автоматически
+          извлечёт его оттуда. Никаких дополнительных настроек не требуется.
         </p>
-        <div className="bg-white border border-red-200 rounded-lg p-4">
-          <h4 className="font-semibold text-red-800 mb-2">Решение:</h4>
-          <p className="text-red-700 mb-2">
-            Добавьте в <code className="bg-red-100 px-1 rounded">.env</code>:
-          </p>
-          <Code lang="env">{`AI_ENABLE_THINKING=false`}</Code>
-          <p className="text-red-700 mt-3 text-sm">
-            Это отключит режим рассуждений и ответ будет приходить в стандартное поле{' '}
-            <code className="bg-red-100 px-1 rounded">content</code>.
-            Если хотите видеть ход рассуждений — установите <code className="bg-red-100 px-1 rounded">true</code>,
-            утилита автоматически извлечёт ответ из <code className="bg-red-100 px-1 rounded">reasoning_content</code>.
-          </p>
-        </div>
+        <p className="text-green-700 text-sm">
+          Если ответ всё равно пустой — утилита выведет подробную диагностику структуры ответа
+          для отладки.
+        </p>
       </div>
     </div>
   );

@@ -52,7 +52,6 @@ doqa_review_tool/
 | `AI_BASE_URL` | Базовый URL API провайдера ИИ (без `/chat/completions`) |
 | `AI_API_KEY` | API-ключ ИИ |
 | `AI_MODEL` | Модель ИИ |
-| `AI_ENABLE_THINKING` | Режим "thinking" для Qwen3 (`true`/`false`, по умолчанию `false`) |
 | `AI_TIMEOUT` | Таймаут ожидания ответа ИИ в секундах (по умолчанию 120) |
 | `AI_MAX_RETRIES` | Максимум попыток при ошибке (по умолчанию 3, управляется OpenAI SDK) |
 | `PROMPT_FILE` | Путь к файлу с промтом |
