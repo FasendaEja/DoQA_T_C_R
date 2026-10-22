@@ -154,27 +154,49 @@ function InstallTab() {
         <h3 className="font-semibold text-lg mb-3">2. Установка зависимостей</h3>
         <CodeBlock>{`pip install -r requirements.txt`}</CodeBlock>
         <p className="text-sm text-gray-500 mt-2">
-          Зависимости: <code className="bg-gray-100 px-1 rounded">requests</code>, <code className="bg-gray-100 px-1 rounded">openpyxl</code>
+          Зависимости: <code className="bg-gray-100 px-1 rounded">requests</code>, <code className="bg-gray-100 px-1 rounded">openpyxl</code>, <code className="bg-gray-100 px-1 rounded">python-dotenv</code>
         </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">3. Настройка переменных окружения</h3>
-        <CodeBlock>{`# Обязательные
-export DOQA_API_TOKEN="ваш_api_токен_doqa"
-export AI_API_KEY="ваш_ключ_ии"
+        <h3 className="font-semibold text-lg mb-3">3. Создание файла .env</h3>
+        <p className="text-gray-600 mb-3">
+          Скопируйте шаблон <code className="bg-gray-100 px-1 rounded">.env.example</code> в <code className="bg-gray-100 px-1 rounded">.env</code> и заполните значения:
+        </p>
+        <CodeBlock>{`cp .env.example .env`}</CodeBlock>
+        <p className="text-gray-600 mb-3 mt-4">
+          Минимальный <code className="bg-gray-100 px-1 rounded">.env</code> для запуска:
+        </p>
+        <CodeBlock language="env">{`# Обязательные
+DOQA_API_TOKEN=ваш_api_токен_doqa
+AI_API_KEY=ваш_ключ_ии
 
-# Опциональные (есть значения по умолчанию)
-export DOQA_BASE_URL="https://app.doqa.app"
-export AI_API_URL="https://api.openai.com/v1/chat/completions"
-export AI_MODEL="gpt-4o"
-export PROMPT_FILE="prompt.txt"
-export RULES_FILE="DoQA_test_case_review_rules.txt"
-export OUTPUT_DIR="review_results"`}</CodeBlock>
+# Режим работы
+DOQA_MODE=file
+DOQA_FILE=export.xlsx`}</CodeBlock>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">4. Получение API-токена DoQA</h3>
+        <h3 className="font-semibold text-lg mb-3">4. Альтернатива: переменные окружения</h3>
+        <p className="text-gray-600 mb-3">
+          Если не хотите использовать .env, можно задать переменные напрямую:
+        </p>
+        <CodeBlock>{`# Linux / macOS
+export DOQA_API_TOKEN="ваш_api_токен_doqa"
+export AI_API_KEY="ваш_ключ_ии"
+export DOQA_MODE="file"
+export DOQA_FILE="export.xlsx"
+
+# Windows (PowerShell)
+$env:DOQA_API_TOKEN="ваш_api_токен_doqa"
+$env:AI_API_KEY="ваш_ключ_ии"`}</CodeBlock>
+        <p className="text-sm text-gray-500 mt-2">
+          ⚡ CLI-аргументы имеют наивысший приоритет и переопределяют .env
+        </p>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">5. Получение API-токена DoQA</h3>
         <ol className="space-y-2 text-gray-600 list-decimal list-inside">
           <li>Войдите в DoQA</li>
           <li>Нажмите на своё имя в правом верхнем углу</li>
@@ -193,15 +215,54 @@ function UsageTab() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Использование</h2>
 
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+          <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-sm">✨ Просто</span>
+          Запуск только по .env (без аргументов)
+        </h3>
+        <p className="text-gray-600 mb-3">
+          Если все параметры указаны в <code className="bg-white px-1 rounded">.env</code>, просто запустите:
+        </p>
+        <CodeBlock>{`python doqa_review.py`}</CodeBlock>
+        <p className="text-sm text-gray-500 mt-2">
+          Утилита автоматически прочитает <code className="bg-white px-1 rounded">.env</code> из директории скрипта
+        </p>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Приоритет параметров</h3>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">1</span>
+            <span className="text-gray-700">Аргументы командной строки (<code className="bg-gray-100 px-1 rounded text-sm">--mode</code>, <code className="bg-gray-100 px-1 rounded text-sm">--space-id</code>, ...)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">2</span>
+            <span className="text-gray-700">Переменные окружения (экспортированные в shell)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">3</span>
+            <span className="text-gray-700">Файл <code className="bg-gray-100 px-1 rounded text-sm">.env</code></span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold w-6 text-center">4</span>
+            <span className="text-gray-700">Значения по умолчанию</span>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white border border-gray-200 rounded-lg p-5">
         <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
           <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">Режим 1</span>
           Получение кейсов через API DoQA
         </h3>
-        <CodeBlock>{`# Базовый вызов
+        <CodeBlock>{`# Через .env (DOQA_MODE=api в .env)
+python doqa_review.py
+
+# Переопределить через CLI
 python doqa_review.py --mode api --space-id 123 --case-ids 456,789,101
 
-# С явным указанием токенов
+# С явным указанием токенов (переопределяет .env)
 python doqa_review.py \\
   --mode api \\
   --space-id 123 \\
@@ -222,7 +283,10 @@ python doqa_review.py \\
           <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-sm">Режим 2</span>
           Получение кейсов из файла экспорта DoQA
         </h3>
-        <CodeBlock>{`# Конкретные кейсы из файла
+        <CodeBlock>{`# Через .env (DOQA_MODE=file, DOQA_FILE=export.xlsx)
+python doqa_review.py
+
+# Переопределить через CLI
 python doqa_review.py --mode file --file export.xlsx --case-ids 456,789
 
 # Все кейсы из файла
@@ -234,6 +298,14 @@ python doqa_review.py \\
   --file export.xlsx \\
   --prompt-file my_prompt.txt \\
   --rules-file my_rules.txt`}</CodeBlock>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Показать текущую конфигурацию</h3>
+        <CodeBlock>{`python doqa_review.py --show-config`}</CodeBlock>
+        <p className="text-sm text-gray-500 mt-2">
+          Показывает все параметры из .env и CLI без запуска ревью
+        </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -279,6 +351,9 @@ function FilesTab() {
         <h3 className="font-semibold text-lg mb-3">Дерево файлов</h3>
         <CodeBlock language="text">{`doqa_review_tool/
 ├── doqa_review.py                      # Основной скрипт утилиты
+├── .env                                # Ваши настройки (НЕ коммитить!)
+├── .env.example                        # Шаблон .env
+├── .gitignore                          # Исключения для git
 ├── prompt.txt                          # Промт для ИИ (редактируемый)
 ├── DoQA_test_case_review_rules.txt     # Правила проверки тест-кейсов
 ├── requirements.txt                    # Python-зависимости
@@ -286,6 +361,24 @@ function FilesTab() {
 └── review_results/                     # Результаты (создаётся автоматически)
     ├── Ревью кейса_456_2024-01-15_14-30-00.txt
     └── Ревью кейса_789_2024-01-15_14-30-05.txt`}</CodeBlock>
+      </div>
+
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3 text-purple-800">📝 .env — Конфигурация</h3>
+        <p className="text-purple-700 mb-3">
+          Основной файл настроек. Создаётся из <code className="bg-purple-100 px-1 rounded">.env.example</code>.
+          Содержит все параметры: токены, URL, режим работы, пути к файлам.
+        </p>
+        <CodeBlock language="env">{`# Пример .env
+DOQA_BASE_URL=https://app.doqa.app
+DOQA_API_TOKEN=ваш_токен
+DOQA_MODE=file
+DOQA_FILE=export.xlsx
+AI_API_KEY=ваш_ключ_ии
+AI_MODEL=gpt-4o`}</CodeBlock>
+        <p className="text-sm text-purple-600 mt-2">
+          ⚠️ Файл <code className="bg-purple-100 px-1 rounded">.env</code> добавлен в .gitignore — не попадёт в репозиторий
+        </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -503,6 +596,24 @@ function NotesTab() {
 Примеры:
   Ревью кейса_456_2024-01-15_14-30-00.txt
   Ревью кейса_789_2024-01-15_14-30-05.txt`}</CodeBlock>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">Запуск в PyCharm</h3>
+        <ol className="space-y-3 text-gray-600 list-decimal list-inside">
+          <li>Откройте папку <code className="bg-gray-100 px-1 rounded">doqa_review_tool/</code> как проект</li>
+          <li>Создайте виртуальное окружение (File → Settings → Python Interpreter)</li>
+          <li>Установите зависимости: <code className="bg-gray-100 px-1 rounded">pip install -r requirements.txt</code></li>
+          <li>Создайте <code className="bg-gray-100 px-1 rounded">.env</code> из <code className="bg-gray-100 px-1 rounded">.env.example</code> и заполните</li>
+          <li>Run → Edit Configurations → добавьте Python configuration</li>
+          <li>Script: <code className="bg-gray-100 px-1 rounded">doqa_review.py</code>, Working directory: путь к проекту</li>
+          <li>Parameters: оставьте пустыми (всё в .env) или переопределяйте частично</li>
+          <li>Запустите через <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F9</kbd> (Debug) или <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Shift+F10</kbd> (Run)</li>
+        </ol>
+        <p className="text-sm text-gray-500 mt-3">
+          💡 PyCharm автоматически подхватывает <code className="bg-gray-100 px-1 rounded">.env</code> из Working Directory.
+          Также можно использовать плагин <strong>EnvFile</strong> для явного указания файла.
+        </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
