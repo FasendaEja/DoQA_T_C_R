@@ -511,24 +511,31 @@ function ApiTab() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Типовая структура запросов (для режима API)</h3>
+        <h3 className="font-semibold text-lg mb-3">Эндпоинт для получения тест-кейсов</h3>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <code className="text-lg font-mono text-blue-700">GET /api/cases/&#123;caseId&#125;?spaceId=&#123;spaceId&#125;</code>
+        </div>
+        <p className="text-gray-600 mb-3">Параметры запроса:</p>
+        <ul className="space-y-2 text-gray-600 mb-4">
+          <li className="flex items-start gap-2">
+            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">caseId</code>
+            <span>— ID тест-кейса (в пути URL)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">spaceId</code>
+            <span>— ID пространства (query-параметр)</span>
+          </li>
+        </ul>
         <CodeBlock>{`# Получить тест-кейс по ID
-GET {DOQA_BASE_URL}/api/spaces/{spaceId}/cases/{caseId}
+GET {DOQA_BASE_URL}/api/cases/{caseId}?spaceId={spaceId}
 Headers:
   Authorization: Bearer <token>
   Accept: application/json
 
-# Получить список тест-кейсов пространства
-GET {DOQA_BASE_URL}/api/spaces/{spaceId}/cases
-Headers:
-  Authorization: Bearer <token>
-  Accept: application/json
-Query params:
-  ids=456,789,101  (фильтрация по ID)`}</CodeBlock>
-        <p className="text-sm text-amber-600 mt-3 bg-amber-50 p-2 rounded">
-          ⚠️ Точные URL эндпоинтов зависят от конфигурации вашего экземпляра DoQA.
-          Проверьте в Swagger UI актуальную структуру.
-        </p>
+# Пример cURL
+curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Accept: application/json"`}</CodeBlock>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">

@@ -69,25 +69,23 @@ OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "review_results")
 
 # ============================================================
 # ПОЛУЧЕНИЕ ТЕСТ-КЕЙСОВ ЧЕРЕЗ API DoQA
+# Эндпоинт: GET /api/cases/{caseId}?spaceId={spaceId}
 # ============================================================
 
 def get_test_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
     """
     Получение тест-кейсов из DoQA через публичный API.
-    
+
+    Эндпоинт: GET /api/cases/{caseId}
     Документация API: доступна через Swagger UI в профиле пользователя DoQA
     (Нажмите на имя -> Public API).
-    
+
     Авторизация: Bearer Token (персональный API-токен из профиля)
-    
-    ВАЖНО: Точные эндпоинты API зависят от версии и конфигурации DoQA.
-    Ниже приведена типовая структура запросов, основанная на документации DoQA 4.3.
-    Если эндпоинты отличаются — скорректируйте URL в соответствии с вашим Swagger.
-    
+
     Args:
-        space_id: ID пространства в DoQA
+        space_id: ID пространства в DoQA (передаётся как query-параметр spaceId)
         case_ids: Список ID тест-кейсов для получения
-        
+
     Returns:
         Список словарей с данными тест-кейсов
     """
@@ -105,26 +103,26 @@ def get_test_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
     test_cases = []
 
     for case_id in case_ids:
-        print(f"  Загрузка тест-кейса {case_id} из пространства {space_id}...")
+        print(f"  Загрузка тест-кейса {case_id} (пространство {space_id})...")
 
-        # Эндпоинт для получения тест-кейса по ID
-        # Примечание: если эндпоинт отличается в вашей версии DoQA,
-        # обратитесь к Swagger UI (Профиль -> Public API)
-        url = f"{DOQA_BASE_URL}/api/spaces/{space_id}/cases/{case_id}"
+        # Эндпоинт: GET /api/cases/{caseId}
+        # spaceId передаётся как query-параметр для фильтрации по пространству
+        url = f"{DOQA_BASE_URL}/api/cases/{case_id}"
+        params = {"spaceId": space_id}
 
         try:
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
             case_data = response.json()
-            
+
             # Формируем структурированное представление тест-кейса
             test_case = format_api_case(case_data)
             test_cases.append(test_case)
             print(f"    ✓ Кейс {case_id} загружен успешно")
-            
+
         except requests.exceptions.HTTPError as e:
             if response.status_code == 404:
-                print(f"    ✗ Кейс {case_id} не найден в пространстве {space_id}")
+                print(f"    ✗ Кейс {case_id} не найден (пространство {space_id})")
             elif response.status_code == 401:
                 print(f"    ✗ Ошибка авторизации. Проверьте DOQA_API_TOKEN в .env")
                 sys.exit(1)
