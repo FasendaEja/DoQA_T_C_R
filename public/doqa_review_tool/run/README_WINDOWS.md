@@ -40,12 +40,15 @@ AI_MODEL=gpt-4o
 **Для режима файла (из xlsx):**
 ```env
 DOQA_MODE=file
-DOQA_FILE=export.xlsx
 
 AI_BASE_URL=https://api.openai.com/v1
 AI_API_KEY=sk-ваш_ключ
 AI_MODEL=gpt-4o
+
+INPUT_DIR=input
 ```
+
+Для режима file поместите файлы экспорта DoQA (xlsx) в папку `input/`. Утилита обработает все файлы и удалит их после обработки.
 
 Сохраните файл и закройте блокнот.
 
@@ -57,6 +60,7 @@ AI_MODEL=gpt-4o
 1. Загрузит тест-кейсы из указанного источника
 2. Отправит каждый кейс в ИИ для ревью
 3. Сохранит результаты в папку `review_results`
+4. Для режима file: удалит обработанные файлы из папки `input/`
 
 ## Структура папки run
 
@@ -71,6 +75,7 @@ run/
 ├── DoQA_test_case_review_rules_.txt # Правила проверки
 ├── requirements.txt                 # Зависимости Python
 ├── README_WINDOWS.md                # Эта инструкция
+├── input/                           # Папка для файлов экспорта (режим file)
 ├── venv/                            # Виртуальное окружение (создаётся setup.bat)
 └── review_results/                  # Результаты ревью (создаётся автоматически)
 ```

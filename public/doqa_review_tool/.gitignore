@@ -1,5 +1,7 @@
 .env
 review_results/
+input/*.xlsx
+input/*.xls
 __pycache__/
 *.pyc
 .venv/
