@@ -434,9 +434,40 @@ function Files() {
 ├── DoQA_test_case_review_rules_.txt    # Правила проверки
 ├── requirements.txt                    # Зависимости
 ├── README.md                           # Документация
+├── run/                                # 🪟 Запуск под Windows
+│   ├── setup.bat                       #   Первичная настройка
+│   ├── run.bat                         #   Запуск утилиты
+│   ├── doqa_review.py                  #   Основной скрипт
+│   ├── .env.example                    #   Шаблон конфигурации
+│   ├── prompt.txt                      #   Промт для ИИ
+│   ├── DoQA_test_case_review_rules_.txt
+│   ├── requirements.txt
+│   ├── README_WINDOWS.md               #   Инструкция для Windows
+│   └── .gitignore                      #   Исключения для git
 └── review_results/                     # Результаты (создаётся автоматически)
     ├── Ревью кейса_456_2024-01-15_14-30-00.txt
     └── Ревью кейса_789_2024-01-15_14-30-05.txt`}</Code>
+      </div>
+
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">🪟 Папка run/ — для Windows</h3>
+        <p className="text-gray-600 mb-3">
+          Папка <code className="bg-white px-1 rounded">run/</code> содержит все файлы, необходимые для запуска под Windows:
+        </p>
+        <ul className="space-y-2 text-gray-600">
+          <li>
+            <strong>setup.bat</strong> — первичная настройка (создаёт виртуальное окружение, устанавливает зависимости, создаёт .env)
+          </li>
+          <li>
+            <strong>run.bat</strong> — запуск утилиты (активирует окружение и запускает скрипт)
+          </li>
+          <li>
+            <strong>README_WINDOWS.md</strong> — подробная инструкция для Windows
+          </li>
+        </ul>
+        <p className="text-sm text-gray-500 mt-3">
+          Просто скопируйте папку <code className="bg-white px-1 rounded">run/</code> на Windows-машину и запустите <code className="bg-white px-1 rounded">setup.bat</code>.
+        </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">

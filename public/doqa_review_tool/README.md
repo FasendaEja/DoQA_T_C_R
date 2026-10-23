@@ -147,8 +147,28 @@ doqa_review_tool/
 ├── prompt.txt                          # Промт для ИИ (редактируемый)
 ├── DoQA_test_case_review_rules_.txt    # Правила проверки
 ├── requirements.txt                    # Зависимости
+├── run/                                # 🪟 Папка для запуска под Windows
+│   ├── setup.bat                       #   Первичная настройка
+│   ├── run.bat                         #   Запуск утилиты
+│   ├── doqa_review.py                  #   Основной скрипт
+│   ├── .env.example                    #   Шаблон конфигурации
+│   ├── prompt.txt                      #   Промт для ИИ
+│   ├── DoQA_test_case_review_rules_.txt
+│   ├── requirements.txt
+│   └── README_WINDOWS.md               #   Инструкция для Windows
 └── review_results/                     # Результаты (создаётся автоматически)
 ```
+
+## Запуск под Windows
+
+Для удобного запуска под Windows используйте папку **`run/`**:
+
+1. Откройте папку `run/`
+2. Запустите `setup.bat` — создаст окружение и установит зависимости
+3. Заполните `.env`
+4. Запускайте `run.bat` для работы утилиты
+
+Подробная инструкция: [run/README_WINDOWS.md](run/README_WINDOWS.md)
 
 ## Параметры .env
 

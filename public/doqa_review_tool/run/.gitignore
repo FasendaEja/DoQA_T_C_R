@@ -1,0 +1,23 @@
+# Виртуальное окружение
+venv/
+env/
+
+# Конфигурация с секретами
+.env
+
+# Результаты ревью
+review_results/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
