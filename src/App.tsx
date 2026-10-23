@@ -107,10 +107,13 @@ function Setup() {
         <Code>{`cp .env.example .env`}</Code>
         <p className="text-gray-600 mt-3">Минимальный .env для режима файла:</p>
         <Code lang="env">{`DOQA_MODE=file
-DOQA_FILE=export.xlsx
+INPUT_DIR=input
 AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
 AI_API_KEY=sk-xxxxxxxxxxxxxxxx
 AI_MODEL=qwen3.8-max`}</Code>
+        <p className="text-sm text-gray-500 mt-2">
+          Поместите файлы xlsx в папку <code className="bg-white px-1 rounded">input/</code>. Утилита обработает все файлы и удалит их.
+        </p>
         <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
         <Code lang="env">{`DOQA_MODE=api
 DOQA_SPACE_ID=123
@@ -168,8 +171,8 @@ AI_MODEL=qwen3.8-max`}</Code>
                 ['DOQA_API_TOKEN', 'API-токен DoQA'],
                 ['DOQA_MODE', 'Режим получения тест-кейсов: api или file'],
                 ['DOQA_SPACE_ID', 'ID пространства (для режима api)'],
-                ['DOQA_CASE_IDS', 'ID кейсов через запятую (для режима api, опционально для file)'],
-                ['DOQA_FILE', 'Путь к xlsx-файлу экспорта (для режима file)'],
+                ['DOQA_CASE_IDS', 'ID кейсов через запятую (опционально для фильтрации)'],
+                ['INPUT_DIR', 'Папка с файлами экспорта (по умолчанию input, для режима file)'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -218,34 +221,28 @@ AI_MODEL=qwen3.8-max`}</Code>
           </div>
 
           <div>
-            <h4 className="font-semibold text-blue-800 mb-2">2. Виртуальное окружение</h4>
-            <Code lang="cmd">{`:: Создание
-python -m venv venv
+            <h4 className="font-semibold text-blue-800 mb-2">2. Первичная настройка</h4>
+            <ol className="list-decimal list-inside space-y-1 text-gray-600 text-sm">
+              <li>Откройте папку <code className="bg-white px-1 rounded">run/</code> в Проводнике</li>
+              <li>Дважды кликните по <code className="bg-white px-1 rounded">setup.bat</code></li>
+              <li>Скрипт автоматически создаст виртуальное окружение, установит зависимости, создаст папку <code className="bg-white px-1 rounded">input/</code> и файл <code className="bg-white px-1 rounded">.env</code></li>
+            </ol>
+          </div>
 
-:: Активация
-venv\\Scripts\\activate`}</Code>
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">3. Настройка .env</h4>
+            <Code lang="cmd">{`notepad .env`}</Code>
             <p className="text-sm text-gray-500 mt-2">
-              Активируйте окружение перед каждым запуском (в начале строки появится <code>(venv)</code>)
+              Заполните параметры в открывшемся файле. Для режима file поместите xlsx файлы в папку <code className="bg-white px-1 rounded">input/</code>
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-blue-800 mb-2">3. Установка зависимостей</h4>
-            <Code lang="cmd">{`pip install -r requirements.txt`}</Code>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-blue-800 mb-2">4. Настройка .env</h4>
-            <Code lang="cmd">{`copy .env.example .env
-notepad .env`}</Code>
-            <p className="text-sm text-gray-500 mt-2">
-              Заполните параметры в открывшемся файле
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-blue-800 mb-2">5. Запуск</h4>
+            <h4 className="font-semibold text-blue-800 mb-2">4. Запуск</h4>
             <Code lang="cmd">{`python doqa_review.py`}</Code>
+            <p className="text-sm text-gray-500 mt-2">
+              Или дважды кликните по <code className="bg-white px-1 rounded">run.bat</code>
+            </p>
           </div>
 
           <div>
@@ -305,7 +302,7 @@ function Usage() {
             Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов по параметру <code className="bg-gray-100 px-1 rounded">DOQA_MODE</code>:
             <ul className="ml-6 mt-1 list-disc text-sm">
               <li><code>DOQA_MODE=api</code> — загружает через API DoQA (требует <code>DOQA_SPACE_ID</code> и <code>DOQA_CASE_IDS</code>)</li>
-              <li><code>DOQA_MODE=file</code> — загружает из xlsx файла (требует <code>DOQA_FILE</code>)</li>
+              <li><code>DOQA_MODE=file</code> — обрабатывает все xlsx файлы из папки <code>input/</code>, затем удаляет их</li>
               <li>Если <code>DOQA_MODE</code> не указан — автоопределение по наличию параметров</li>
             </ul>
           </li>
@@ -434,6 +431,7 @@ function Files() {
 ├── DoQA_test_case_review_rules_.txt    # Правила проверки
 ├── requirements.txt                    # Зависимости
 ├── README.md                           # Документация
+├── input/                              # Папка для файлов экспорта (режим file)
 ├── run/                                # 🪟 Запуск под Windows
 │   ├── setup.bat                       #   Первичная настройка
 │   ├── run.bat                         #   Запуск утилиты

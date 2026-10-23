@@ -8,6 +8,10 @@ env/
 # Результаты ревью
 review_results/
 
+# Файлы экспорта в папке input (обрабатываются и удаляются)
+input/*.xlsx
+input/*.xls
+
 # Python
 __pycache__/
 *.pyc
