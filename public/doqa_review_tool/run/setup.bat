@@ -49,6 +49,15 @@ if errorlevel 1 (
 echo [OK] Зависимости установлены
 echo.
 
+:: Создание папки input для входящих файлов
+if not exist "input\" (
+    mkdir input
+    echo [OK] Папка input создана
+) else (
+    echo [OK] Папка input уже существует
+)
+echo.
+
 :: Создание .env из шаблона
 if not exist ".env" (
     copy .env.example .env >nul
@@ -70,7 +79,8 @@ echo ========================================
 echo.
 echo Теперь:
 echo   1. Заполните .env нужными параметрами
-echo   2. Запустите run.bat для работы утилиты
+echo   2. Для режима file: поместите xlsx файлы в папку input/
+echo   3. Запустите run.bat для работы утилиты
 echo.
 echo ========================================
 pause

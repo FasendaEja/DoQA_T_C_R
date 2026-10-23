@@ -221,34 +221,28 @@ AI_MODEL=qwen3.8-max`}</Code>
           </div>
 
           <div>
-            <h4 className="font-semibold text-blue-800 mb-2">2. Виртуальное окружение</h4>
-            <Code lang="cmd">{`:: Создание
-python -m venv venv
+            <h4 className="font-semibold text-blue-800 mb-2">2. Первичная настройка</h4>
+            <ol className="list-decimal list-inside space-y-1 text-gray-600 text-sm">
+              <li>Откройте папку <code className="bg-white px-1 rounded">run/</code> в Проводнике</li>
+              <li>Дважды кликните по <code className="bg-white px-1 rounded">setup.bat</code></li>
+              <li>Скрипт автоматически создаст виртуальное окружение, установит зависимости, создаст папку <code className="bg-white px-1 rounded">input/</code> и файл <code className="bg-white px-1 rounded">.env</code></li>
+            </ol>
+          </div>
 
-:: Активация
-venv\\Scripts\\activate`}</Code>
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">3. Настройка .env</h4>
+            <Code lang="cmd">{`notepad .env`}</Code>
             <p className="text-sm text-gray-500 mt-2">
-              Активируйте окружение перед каждым запуском (в начале строки появится <code>(venv)</code>)
+              Заполните параметры в открывшемся файле. Для режима file поместите xlsx файлы в папку <code className="bg-white px-1 rounded">input/</code>
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-blue-800 mb-2">3. Установка зависимостей</h4>
-            <Code lang="cmd">{`pip install -r requirements.txt`}</Code>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-blue-800 mb-2">4. Настройка .env</h4>
-            <Code lang="cmd">{`copy .env.example .env
-notepad .env`}</Code>
-            <p className="text-sm text-gray-500 mt-2">
-              Заполните параметры в открывшемся файле
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-blue-800 mb-2">5. Запуск</h4>
+            <h4 className="font-semibold text-blue-800 mb-2">4. Запуск</h4>
             <Code lang="cmd">{`python doqa_review.py`}</Code>
+            <p className="text-sm text-gray-500 mt-2">
+              Или дважды кликните по <code className="bg-white px-1 rounded">run.bat</code>
+            </p>
           </div>
 
           <div>
