@@ -40,11 +40,33 @@ function Overview() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          🤖 DoQA Review Tool
+          🤖 QA Agent System
         </h2>
-        <p className="text-gray-600">
-          Python-утилита для автоматического ревью тест-кейсов DoQA 4.3.1 с использованием ИИ.
+        <p className="text-gray-600 mb-3">
+          Агентная система для подготовки, анализа и управления тест-кейсами.
+          Автоматизация процесса тестирования с использованием LangGraph и LLM (qwen3.8).
         </p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">LangGraph</span>
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Pydantic v2</span>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">FastAPI</span>
+          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Qwen 3.8</span>
+          <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">DoQA 4.3.1</span>
+        </div>
+      </div>
+
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <h3 className="font-semibold text-purple-800 mb-2">📦 Структура проектов</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-white border border-gray-200 rounded p-3">
+            <h4 className="font-semibold text-gray-800 text-sm">Review Utility</h4>
+            <p className="text-xs text-gray-500">Заморожен — стабильная версия утилиты ревью</p>
+          </div>
+          <div className="bg-white border border-purple-300 rounded p-3">
+            <h4 className="font-semibold text-purple-800 text-sm">agents (в разработке)</h4>
+            <p className="text-xs text-gray-500">Шаги A и B завершены. Шаг C — в процессе.</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -548,12 +570,13 @@ export default function App() {
             🤖
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">DoQA Review Tool</h1>
-            <p className="text-sm text-gray-500">Ревью тест-кейсов с ИИ</p>
+            <h1 className="text-xl font-bold text-gray-800">QA Agent System</h1>
+            <p className="text-sm text-gray-500">Агентная система подготовки тест-кейсов</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">DoQA 4.3.1</span>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Python</span>
+            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">LangGraph</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Python 3.11+</span>
           </div>
         </div>
       </header>
@@ -581,7 +604,12 @@ export default function App() {
 
       <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-5xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          <p>DoQA Review Tool • DoQA 4.3.1 • Python</p>
+          <p>QA Agent System • DoQA 4.3.1 • Python 3.11+ • LangGraph</p>
+          <p className="mt-1">
+            Проекты:{' '}
+            <span className="font-medium">Review Utility</span> (заморожен) •{' '}
+            <span className="font-medium text-purple-600">agents</span> (в разработке)
+          </p>
           <p className="mt-1">
             Документация:{' '}
             <a href="https://docs.doqa.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
