@@ -5,7 +5,8 @@
 ## Статус
 
 **Шаг A завершён** — каркас проекта, схемы данных, конфигурация.  
-**Шаг B завершён** — парсеры документов и сервисы доменной логики.
+**Шаг B завершён** — парсеры документов и сервисы доменной логики.  
+**Шаг C завершён** — агенты, граф LangGraph, human-in-the-loop, адаптеры.
 
 ## Архитектура
 
@@ -63,6 +64,34 @@ qa-agent-system/
 - ✅ services/rationale_service.py — сервис объяснений
 - ✅ services/report_service.py — сервис отчётов
 - ✅ services/markdown_service.py — сервис Markdown
+
+### Шаг C. Агенты и граф
+- ✅ llm/client.py — LLM-клиент для OpenAI-совместимых API
+- ✅ llm/prompts.py — построитель промптов для агентов
+- ✅ llm/json_parser.py — парсер JSON-ответов с валидацией
+- ✅ agents/base_agent.py — базовый класс для всех агентов
+- ✅ agents/requirement_intake_agent.py — агент получения требований
+- ✅ agents/requirement_diff_agent.py — агент сравнения требований
+- ✅ agents/requirement_analysis_agent.py — агент анализа требований
+- ✅ agents/mindmap_agent.py — агент формирования mind-map
+- ✅ agents/checklist_agent.py — агент формирования чек-листа
+- ✅ agents/doqa_context_agent.py — агент сбора контекста из DoQA
+- ✅ agents/codebase_context_agent.py — агент сбора контекста из кодовой базы
+- ✅ agents/impact_analysis_agent.py — агент анализа влияния
+- ✅ agents/test_case_authoring_agent.py — агент генерации тест-кейсов
+- ✅ agents/doqa_review_agent.py — агент ревью тест-кейсов
+- ✅ agents/doqa_structure_agent.py — агент предложения структуры
+- ✅ graph/state.py — состояние пайплайна LangGraph
+- ✅ graph/nodes.py — узлы графа (12 узлов)
+- ✅ graph/edges.py — переходы между узлами
+- ✅ graph/pipeline.py — построение и запуск пайплайна
+- ✅ human/review_service.py — сервис ревью человеком
+- ✅ human/stage_gate.py — управление переходами между этапами
+- ✅ human/history_store.py — хранилище истории выполнения
+- ✅ adapters/redmine_adapter.py — адаптер Redmine (заглушка)
+- ✅ adapters/folder_input_adapter.py — адаптер чтения из папки
+- ✅ adapters/repository_input_adapter.py — адаптер чтения из репозитория
+- ✅ adapters/external_codebase_agent_adapter.py — адаптер внешнего агента
 
 ## Следующие шаги
 
