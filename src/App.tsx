@@ -82,6 +82,7 @@ function Overview() {
             <li>✓ Каждый кейс — отдельный запрос</li>
             <li>✓ Промт в редактируемом файле</li>
             <li>✓ Qwen3.8 / OpenAI / другие</li>
+            <li>✓ <strong>Автоматический цикл генерации и ревью</strong> (до 3 итераций)</li>
           </ul>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-5">

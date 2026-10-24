@@ -47,15 +47,11 @@ stages:
     order: 8
     requires_human: true
 
-  - id: "test_case_generation"
-    name: "Генерация тест-кейсов"
+  - id: "test_case_generation_review"
+    name: "Генерация и ревью тест-кейсов (цикл)"
     order: 9
     requires_human: true
-
-  - id: "test_case_review"
-    name: "Внутреннее ревью"
-    order: 10
-    requires_human: true
+    description: "Автоматический цикл генерации и ревью с максимум 3 итерациями"
 
   - id: "structure_proposal"
     name: "Предложение структуры"

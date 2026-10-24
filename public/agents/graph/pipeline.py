@@ -43,8 +43,7 @@ def build_pipeline(llm_client: LLMClient | None = None) -> StateGraph:
     workflow.add_node("context_collection", nodes.context_collection_node)
     workflow.add_node("impact_analysis", nodes.impact_analysis_node)
     workflow.add_node("case_lists", nodes.case_lists_node)
-    workflow.add_node("test_case_generation", nodes.test_case_generation_node)
-    workflow.add_node("test_case_review", nodes.test_case_review_node)
+    workflow.add_node("test_case_generation_review", nodes.test_case_generation_review_node)
     workflow.add_node("structure_proposal", nodes.structure_proposal_node)
     workflow.add_node("doqa_export", nodes.doqa_export_node)
     
@@ -81,14 +80,11 @@ def build_pipeline(llm_client: LLMClient | None = None) -> StateGraph:
     # impact_analysis -> case_lists
     workflow.add_edge("impact_analysis", "case_lists")
     
-    # case_lists -> test_case_generation
-    workflow.add_edge("case_lists", "test_case_generation")
+    # case_lists -> test_case_generation_review
+    workflow.add_edge("case_lists", "test_case_generation_review")
     
-    # test_case_generation -> test_case_review
-    workflow.add_edge("test_case_generation", "test_case_review")
-    
-    # test_case_review -> structure_proposal
-    workflow.add_edge("test_case_review", "structure_proposal")
+    # test_case_generation_review -> structure_proposal
+    workflow.add_edge("test_case_generation_review", "structure_proposal")
     
     # structure_proposal -> doqa_export
     workflow.add_edge("structure_proposal", "doqa_export")

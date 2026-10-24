@@ -506,9 +506,11 @@ class PipelineNodes:
                 "current_stage": "error",
             }
 
-    def test_case_generation_node(self, state: PipelineState) -> dict[str, Any]:
+    def test_case_generation_review_node(self, state: PipelineState) -> dict[str, Any]:
         """
-        Узел генерации тест-кейсов.
+        Узел цикла генерации и ревью тест-кейсов.
+        
+        Объединяет генерацию и ревью в автоматический цикл с максимум 3 итерациями.
         
         Args:
             state: Текущее состояние
@@ -516,77 +518,23 @@ class PipelineNodes:
         Returns:
             Обновления состояния
         """
-        logger.info("Узел: test_case_generation")
+        logger.info("Узел: test_case_generation_review (цикл)")
         
         try:
-            # TODO: Реальная генерация тест-кейсов на основе требований и чек-листа
+            from .generation_review_cycle import GenerationReviewCycleNode
             
-            updates = {
-                "generated_cases": [],
-                "stages": {
-                    **state.get("stages", {}),
-                    "test_case_generation": StageState(
-                        stage_id="test_case_generation",
-                        stage_name="Генерация тест-кейсов",
-                        status=StageStatus.WAITING_FOR_HUMAN,
-                        iteration=1,
-                        result={"generated_cases": []},
-                    ),
-                },
-                "current_stage": "test_case_review",
-            }
+            cycle_node = GenerationReviewCycleNode(
+                llm_client=self.llm_client,
+                max_iterations=3,
+                pass_threshold=90.0,
+            )
             
-            return updates
+            return cycle_node.run(state)
             
         except Exception as e:
-            logger.error(f"Ошибка в узле test_case_generation: {e}")
+            logger.error(f"Ошибка в узле test_case_generation_review: {e}")
             return {
-                "errors": state.get("errors", []) + [f"test_case_generation: {e}"],
-                "current_stage": "error",
-            }
-
-    def test_case_review_node(self, state: PipelineState) -> dict[str, Any]:
-        """
-        Узел ревью тест-кейсов.
-        
-        Args:
-            state: Текущее состояние
-            
-        Returns:
-            Обновления состояния
-        """
-        logger.info("Узел: test_case_review")
-        
-        try:
-            generated_cases = state.get("generated_cases", [])
-            
-            # Ревью каждого сгенерированного кейса
-            reviews = []
-            for case in generated_cases:
-                review_result = self.doqa_review_agent.run(test_case=case)
-                reviews.append(review_result["review"])
-            
-            updates = {
-                "reviewed_cases": reviews,
-                "stages": {
-                    **state.get("stages", {}),
-                    "test_case_review": StageState(
-                        stage_id="test_case_review",
-                        stage_name="Ревью тест-кейсов",
-                        status=StageStatus.WAITING_FOR_HUMAN,
-                        iteration=1,
-                        result={"reviewed_cases": reviews},
-                    ),
-                },
-                "current_stage": "structure_proposal",
-            }
-            
-            return updates
-            
-        except Exception as e:
-            logger.error(f"Ошибка в узле test_case_review: {e}")
-            return {
-                "errors": state.get("errors", []) + [f"test_case_review: {e}"],
+                "errors": state.get("errors", []) + [f"test_case_generation_review: {e}"],
                 "current_stage": "error",
             }
 
