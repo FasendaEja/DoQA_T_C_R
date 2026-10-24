@@ -40,10 +40,7 @@ OUTPUT_DIR = os.getenv("OUTPUT_DIR", "review_results")
 
 # ── 1. Получение тест-кейсов через API DoQA ──────────────────
 def get_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
-    """
-    Получение тест-кейсов через GET /api/cases/{caseId}.
-    spaceId передаётся как query-параметр для фильтрации по пространству.
-    """
+    """Получение тест-кейсов через GET /api/cases/{caseId}."""
     if not DOQA_TOKEN:
         sys.exit("ОШИБКА: Не указан DOQA_API_TOKEN в .env")
 
@@ -70,7 +67,7 @@ def get_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
     return cases
 
 
-def _normalize(data: dict) -> dict:
+def _normalize( dict) -> dict:
     """Приведение ответа API к единому формату."""
     steps = []
     for i, s in enumerate(data.get("steps", []), 1):
@@ -93,12 +90,7 @@ def _normalize(data: dict) -> dict:
 
 # ── 2. Получение тест-кейсов из файла экспорта DoQA ──────────
 def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict]:
-    """
-    Парсинг xlsx-файла экспорта DoQA.
-    Колонки: ID, Title, Description, Preconditions, Postconditions,
-             Priority, Step, Expected result, Test data, ...
-    Один кейс = несколько строк (по числу шагов).
-    """
+    """Парсинг xlsx-файла экспорта DoQA."""
     if not os.path.exists(file_path):
         sys.exit(f"ОШИБКА: Файл не найден: {file_path}")
 
@@ -106,7 +98,6 @@ def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict
     wb = openpyxl.load_workbook(file_path, read_only=True)
     ws = wb.active
 
-    # Маппинг колонок
     cols = {c.value: i for i, c in enumerate(next(ws.iter_rows(min_row=1, max_row=1))) if c.value}
 
     for need in ("ID", "Title", "Step", "Expected result"):
@@ -185,17 +176,12 @@ def _format_case(c: dict) -> str:
 
 
 def review_case(case: dict, prompt: str, rules: str) -> str:
-    """
-    Отправка одного тест-кейса в ИИ на ревью через OpenAI SDK.
-    SDK автоматически управляет retry при временных ошибках.
-    Ждёт полный ответ от ИИ перед обработкой.
-    """
+    """Отправка одного тест-кейса в ИИ на ревью через OpenAI SDK."""
     if not AI_API_KEY:
         return "ОШИБКА: Не указан AI_API_KEY в .env"
 
     body = f"{prompt}\n\n=== ПРАВИЛА ПРОВЕРКИ ===\n{rules}\n\n=== ТЕСТ-КЕЙС ===\n{_format_case(case)}"
 
-    # Создаём клиент OpenAI (работает с любым OpenAI-совместимым API)
     client = OpenAI(
         api_key=AI_API_KEY,
         base_url=AI_BASE_URL,
@@ -206,7 +192,6 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
     try:
         print(f"      Отправка запроса в {AI_MODEL}...")
 
-        # SDK ждёт полный ответ (не стриминг)
         response = client.chat.completions.create(
             model=AI_MODEL,
             messages=[
@@ -217,28 +202,22 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
             max_tokens=4000,
         )
 
-        # Проверяем, что ответ пришёл
         if not response.choices or len(response.choices) == 0:
             return "ОШИБКА: Пустой ответ от ИИ (нет choices)"
 
         choice = response.choices[0]
         message = choice.message
 
-        # Извлекаем контент:
-        # - Сначала пробуем content (стандартное поле)
-        # - Если пусто — берём reasoning_content (Qwen3 в режиме thinking)
         content = getattr(message, "content", None) or ""
         if not content:
             content = getattr(message, "reasoning_content", None) or ""
             if content:
                 print(f"      ℹ Ответ извлечён из reasoning_content (режим thinking)")
 
-        # Если всё ещё пусто — выводим диагностику
         if not content:
             debug_info = f"ОШИБКА: Пустой контент в ответе ИИ.\n"
             debug_info += f"  Модель: {AI_MODEL}\n"
             debug_info += f"  finish_reason: {choice.finish_reason}\n"
-            debug_info += f"  Поля message: {[k for k in dir(message) if not k.startswith('_')]}\n"
             try:
                 msg_dict = message.model_dump() if hasattr(message, "model_dump") else str(message)
                 debug_info += f"  Содержимое message: {str(msg_dict)[:500]}"
@@ -246,21 +225,13 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
                 debug_info += f"  message (repr): {repr(message)[:500]}"
             return debug_info
 
-        # Выводим причину завершения ответа
         finish_reason = choice.finish_reason
         print(f"      finish_reason: {finish_reason}")
         if finish_reason == "length":
             print(f"      ⚠ Ответ обрезан (достигнут лимит токенов)")
         elif finish_reason == "content_filter":
             print(f"      ⚠ Ответ заблокирован контент-фильтром")
-        elif finish_reason == "tool_calls":
-            print(f"      ℹ Модель запросила вызов инструментов")
-        elif finish_reason == "stop":
-            pass  # нормальное завершение
-        elif finish_reason is None:
-            print(f"      ⚠ finish_reason не указан")
 
-        # Информация о токенах
         if response.usage:
             print(f"      ✓ Ответ получен: {len(content)} символов, "
                   f"токенов: {response.usage.prompt_tokens}→{response.usage.completion_tokens}")
@@ -270,27 +241,18 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
         return content
 
     except APITimeoutError:
-        return f"ОШИБКА: Таймаут ({AI_TIMEOUT}с) после {AI_MAX_RETRIES} попыток. Увеличьте AI_TIMEOUT в .env"
-
+        return f"ОШИБКА: Таймаут ({AI_TIMEOUT}с) после {AI_MAX_RETRIES} попыток"
     except APIConnectionError:
-        return f"ОШИБКА: Не удалось подключиться к {AI_BASE_URL}. Проверьте URL и интернет-соединение"
-
+        return f"ОШИБКА: Не удалось подключиться к {AI_BASE_URL}"
     except RateLimitError as e:
-        return f"ОШИБКА: Превышен лимит запросов. Подождите и попробуйте снова. {e}"
-
+        return f"ОШИБКА: Превышен лимит запросов. {e}"
     except APIStatusError as e:
         if e.status_code == 401:
-            return f"ОШИБКА: Неверный API-ключ. Проверьте AI_API_KEY в .env"
+            return f"ОШИБКА: Неверный API-ключ"
         elif e.status_code == 404:
-            return (f"ОШИБКА: Эндпоинт или модель не найдены (404).\n"
-                    f"  URL: {AI_BASE_URL}\n"
-                    f"  Модель: {AI_MODEL}\n"
-                    f"  Проверьте правильность AI_BASE_URL и AI_MODEL в .env")
-        elif e.status_code == 429:
-            return f"ОШИБКА: Превышен лимит запросов или квота. {e}"
+            return f"ОШИБКА: Эндпоинт или модель не найдены (404).\n  URL: {AI_BASE_URL}\n  Модель: {AI_MODEL}"
         else:
             return f"ОШИБКА API (HTTP {e.status_code}): {e.message}"
-
     except Exception as e:
         return f"ОШИБКА: {type(e).__name__}: {e}"
 
@@ -315,127 +277,75 @@ def main():
     print("=" * 60)
     print("  DoQA Review Tool — ревью тест-кейсов с ИИ")
     print("=" * 60)
-    print(f"  .env: {_env_path if _env_path.exists() else '(не найден, используются переменные окружения)'}")
+    print(f"  .env: {_env_path if _env_path.exists() else '(не найден)'}")
     print(f"  AI: {AI_MODEL} @ {AI_BASE_URL}")
 
-    # Определяем источник тест-кейсов
     if DOQA_MODE == "api":
-        # Режим API: требуется spaceId и caseIds
         if not DOQA_SPACE_ID:
-            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_SPACE_ID в .env")
+            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_SPACE_ID")
         if not DOQA_CASE_IDS:
-            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_CASE_IDS в .env")
-        
+            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_CASE_IDS")
         print(f"\n[1] Режим: API DoQA")
         print(f"    Пространство: {DOQA_SPACE_ID}")
         ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
-        print(f"    Кейсы: {ids}")
         cases = get_cases_from_api(DOQA_SPACE_ID, ids)
-        
+
     elif DOQA_MODE == "file":
-        # Режим файла: обработка всех файлов из папки input/
         print(f"\n[1] Режим: Обработка файлов из папки {INPUT_DIR}/")
-        
-        # Создаём папку input, если её нет
         if not os.path.exists(INPUT_DIR):
             os.makedirs(INPUT_DIR)
-            print(f"    Создана папка: {INPUT_DIR}/")
-        
-        # Ищем все xlsx файлы в папке input
         xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
-        
         if not xlsx_files:
-            sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx\n"
-                     f"Поместите файлы экспорта DoQA в папку {INPUT_DIR}/ и запустите утилиту снова")
-        
+            sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx")
         print(f"    Найдено файлов: {len(xlsx_files)}")
-        for f in xlsx_files:
-            print(f"      - {f}")
-        
-        # Фильтр по ID кейсов (опционально)
         ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
-        if ids:
-            print(f"    Фильтр по кейсам: {ids}")
-        
-        # Обрабатываем каждый файл по очереди
         cases = []
         for filename in xlsx_files:
             file_path = os.path.join(INPUT_DIR, filename)
             print(f"\n  → Обработка файла: {filename}")
-            
-            # 1) Считываем файл
             file_cases = get_cases_from_file(file_path, ids)
             cases.extend(file_cases)
-            
-            # 2) Ревью будет выполнен позже (после сбора всех кейсов)
-            
-            # 3) Удаляем файл из папки input
             try:
                 os.remove(file_path)
                 print(f"    ✓ Файл удалён: {filename}")
             except Exception as e:
                 print(f"    ⚠ Не удалось удалить файл {filename}: {e}")
-        
+
     elif DOQA_MODE == "":
-        # Автоопределение (для обратной совместимости)
-        # Проверяем наличие файлов в папке input
         input_has_files = False
         if os.path.exists(INPUT_DIR):
             input_has_files = any(f.endswith(('.xlsx', '.xls')) for f in os.listdir(INPUT_DIR))
-        
         if input_has_files:
-            # Есть файлы в input — используем режим file
             print(f"\n[1] Режим: Обработка файлов из папки {INPUT_DIR}/ (авто)")
             xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
-            print(f"    Найдено файлов: {len(xlsx_files)}")
-            
             ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
-            if ids:
-                print(f"    Фильтр по кейсам: {ids}")
-            
             cases = []
             for filename in xlsx_files:
                 file_path = os.path.join(INPUT_DIR, filename)
-                print(f"\n  → Обработка файла: {filename}")
                 file_cases = get_cases_from_file(file_path, ids)
                 cases.extend(file_cases)
                 try:
                     os.remove(file_path)
                     print(f"    ✓ Файл удалён: {filename}")
                 except Exception as e:
-                    print(f"    ⚠ Не удалось удалить файл {filename}: {e}")
-        
+                    print(f"    ⚠ Не удалось удалить файл: {e}")
         elif DOQA_SPACE_ID and DOQA_CASE_IDS:
             print(f"\n[1] Режим: API DoQA (авто)")
-            print(f"    Пространство: {DOQA_SPACE_ID}")
             ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
             cases = get_cases_from_api(DOQA_SPACE_ID, ids)
         else:
-            sys.exit(
-                "ОШИБКА: Не указан DOQA_MODE в .env.\n"
-                "  Укажите DOQA_MODE=api или DOQA_MODE=file\n"
-                "  Для api: заполните DOQA_SPACE_ID и DOQA_CASE_IDS\n"
-                "  Для file: поместите файлы xlsx в папку input/"
-            )
+            sys.exit("ОШИБКА: Не указан DOQA_MODE. Укажите api или file")
     else:
-        sys.exit(
-            f"ОШИБКА: Неверное значение DOQA_MODE='{DOQA_MODE}' в .env\n"
-            "  Допустимые значения: api или file"
-        )
+        sys.exit(f"ОШИБКА: Неверное DOQA_MODE='{DOQA_MODE}'")
 
     if not cases:
         sys.exit("ОШИБКА: Не удалось получить тест-кейсы")
 
     print(f"\n  Получено кейсов: {len(cases)}")
-
-    # Загружаем промт и правила (перечитываются при каждом запуске)
     print("\n[2] Загрузка промта и правил...")
     prompt = _read_file(PROMPT_FILE)
     rules = _read_file(RULES_FILE)
-    print(f"  Промт:   {PROMPT_FILE}")
-    print(f"  Правила: {RULES_FILE}")
 
-    # Ревью каждого кейса отдельно
     print("\n[3] Отправка в ИИ...")
     for i, case in enumerate(cases, 1):
         print(f"\n  [{i}/{len(cases)}] Кейс {case['id']}: {case['title'][:50]}...")

@@ -1,0 +1,77 @@
+# Общие настройки приложения
+
+app:
+  name: "QA Agent System"
+  version: "0.1.0"
+  description: "Агентная система для подготовки, анализа и управления тест-кейсами"
+
+# Этапы пайплайна
+stages:
+  - id: "requirement_intake"
+    name: "Получение требований"
+    order: 1
+    requires_human: true
+
+  - id: "requirement_diff"
+    name: "Формирование дельты"
+    order: 2
+    requires_human: true
+
+  - id: "requirement_analysis"
+    name: "Анализ требований"
+    order: 3
+    requires_human: true
+
+  - id: "mindmap_generation"
+    name: "Формирование mind-map"
+    order: 4
+    requires_human: true
+
+  - id: "checklist_generation"
+    name: "Формирование чек-листа"
+    order: 5
+    requires_human: true
+
+  - id: "context_collection"
+    name: "Сбор контекста"
+    order: 6
+    requires_human: true
+
+  - id: "impact_analysis"
+    name: "Анализ влияния"
+    order: 7
+    requires_human: true
+
+  - id: "case_lists"
+    name: "Формирование списков кейсов"
+    order: 8
+    requires_human: true
+
+  - id: "test_case_generation"
+    name: "Генерация тест-кейсов"
+    order: 9
+    requires_human: true
+
+  - id: "test_case_review"
+    name: "Внутреннее ревью"
+    order: 10
+    requires_human: true
+
+  - id: "structure_proposal"
+    name: "Предложение структуры"
+    order: 11
+    requires_human: true
+
+  - id: "doqa_export"
+    name: "Экспорт в DoQA"
+    order: 12
+    requires_human: true
+
+# Рекомендованные температуры LLM для этапов
+stage_temperatures:
+  requirement_analysis: 0.2
+  mindmap_generation: 0.3
+  checklist_generation: 0.2
+  test_case_generation: 0.1
+  test_case_review: 0.0
+  impact_analysis: 0.15

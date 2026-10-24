@@ -1,0 +1,46 @@
+# Конфигурация оценки DoQA review
+# DoQA test case review rules v1.10.0
+
+# Веса областей оценки (сумма = 100%)
+weights:
+  title: 10
+  description: 15
+  preconditions: 10
+  configurations: 5
+  test_data: 10
+  step_instructions: 25
+  expected_results: 20
+  overall_coherence: 5
+
+# Коэффициенты серьёзности замечаний
+severity_coefficients:
+  error: 0.0
+  no_issues: 1.0
+  recommendation: 0.9
+  warning: 0.6
+
+# Пороговые значения рейтинга
+rating_thresholds:
+  5: 90
+  4: 75
+  3: 60
+  2: 40
+  1: 0
+
+# Порог принятия кейса
+pass_threshold: 90
+
+# Максимальное число итераций генерации
+max_generation_iterations: 3
+
+# Статусы результата
+statuses:
+  pass: "ready-for-review"
+  fail: "needs-changes"
+
+# Категории замечаний
+issue_categories:
+  - test_case_defect
+  - automation_limitation
+  - environment_issue
+  - automation_defect
