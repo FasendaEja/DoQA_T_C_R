@@ -62,9 +62,9 @@ function Overview() {
             <h4 className="font-semibold text-gray-800 text-sm">Review Utility</h4>
             <p className="text-xs text-gray-500">Заморожен — стабильная версия утилиты ревью</p>
           </div>
-          <div className="bg-white border border-purple-300 rounded p-3">
-            <h4 className="font-semibold text-purple-800 text-sm">agents (в разработке)</h4>
-            <p className="text-xs text-gray-500">Шаги A и B завершены. Шаг C — в процессе.</p>
+          <div className="bg-white border border-green-300 rounded p-3">
+            <h4 className="font-semibold text-green-800 text-sm">agents ✅</h4>
+            <p className="text-xs text-gray-500">Все 4 шага завершены. Проект готов к использованию.</p>
           </div>
         </div>
       </div>

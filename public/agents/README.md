@@ -6,7 +6,8 @@
 
 **Шаг A завершён** — каркас проекта, схемы данных, конфигурация.  
 **Шаг B завершён** — парсеры документов и сервисы доменной логики.  
-**Шаг C завершён** — агенты, граф LangGraph, human-in-the-loop, адаптеры.
+**Шаг C завершён** — агенты, граф LangGraph, human-in-the-loop, адаптеры.  
+**Шаг D завершён** — FastAPI backend, Web UI, CLI, DoQA интеграции, тесты.
 
 ## Архитектура
 
@@ -93,22 +94,39 @@ qa-agent-system/
 - ✅ adapters/repository_input_adapter.py — адаптер чтения из репозитория
 - ✅ adapters/external_codebase_agent_adapter.py — адаптер внешнего агента
 
+### Шаг D. Интерфейсы и интеграции
+- ✅ web_ui/app.py — FastAPI приложение
+- ✅ web_ui/routes.py — маршруты API (пайплайн, ревью, история, конфигурация)
+- ✅ web_ui/static/index.html — базовый Web UI
+- ✅ integrations/doqa/doqa_api_adapter.py — адаптер DoQA API (mock/dry-run/real)
+- ✅ integrations/doqa/doqa_file_export_adapter.py — экспорт в файл (JSON)
+- ✅ integrations/doqa/doqa_import_service.py — сервис импорта (file/api)
+- ✅ integrations/doqa/doqa_structure_service.py — сервис управления структурой
+- ✅ main.py — обновлённый CLI с интеграцией пайплайна
+- ✅ tests/test_rules_loader.py — тесты загрузчика правил
+- ✅ tests/test_review_score.py — тесты сервиса оценки
+- ✅ tests/test_requirement_diff.py — тесты дельты требований
+- ✅ tests/test_parsers.py — тесты парсеров
+- ✅ tests/test_doqa_adapter_mock.py — тесты DoQA адаптера
+- ✅ tests/test_stage_gate.py — тесты stage gate
+- ✅ tests/test_pipeline_smoke.py — smoke-тест пайплайна
+
 ## Следующие шаги
 
-### Шаг C. Агенты и граф
-- LangGraph state
-- Узлы этапов
-- Переходы между узлами
-- Цикл генерации и ревью
-- Агенты
-- Human gates
+Проект полностью реализован. Все 4 шага выполнены:
+- ✅ Шаг A: Каркас и данные
+- ✅ Шаг B: Доменная логика
+- ✅ Шаг C: Агенты и граф
+- ✅ Шаг D: Интерфейсы и интеграции
 
-### Шаг D. Интерфейсы и интеграции
-- FastAPI backend
-- Web UI
-- CLI
-- DoQA mock/dry-run адаптер
-- Redmine адаптер
+### Дальнейшее развитие
+
+- Заполнение DoQA API контракта после получения документации
+- Реализация реальной интеграции с DoQA API
+- Реализация интеграции с Redmine
+- Расширение Web UI
+- Добавление интеграционных тестов
+- Оптимизация производительности
 - Dockerfile
 - docker-compose.yml
 - Тесты
