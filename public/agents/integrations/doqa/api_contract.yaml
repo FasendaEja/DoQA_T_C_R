@@ -1,0 +1,96 @@
+# Контракт DoQA API
+# Версия: 4.3.1
+#
+# ВНИМАНИЕ: Точные эндпоинты, схемы и методы аутентификации
+# должны быть взяты из официальной документации DoQA API 4.3.1.
+# До получения документации все значения помечены как TBD.
+
+doqa_api:
+  version: "4.3.1"
+  base_url: "TBD"
+  auth:
+    type: "TBD"
+    header_name: "TBD"
+    token_env: "DOQA_API_TOKEN"
+
+  endpoints:
+    get_test_case:
+      method: "TBD"
+      path: "TBD"
+      description: "Получение тест-кейса по ID"
+      known_from_practice: "GET /api/cases/{caseId}?spaceId={spaceId}"
+
+    export_test_cases:
+      method: "TBD"
+      path: "TBD"
+      response_format: "TBD"
+      description: "Экспорт тест-кейсов с фильтрами"
+
+    create_test_case:
+      method: "TBD"
+      path: "TBD"
+      request_schema: "TBD"
+      description: "Создание тест-кейса"
+
+    update_test_case:
+      method: "TBD"
+      path: "TBD"
+      request_schema: "TBD"
+      description: "Обновление тест-кейса"
+
+    bulk_import_test_cases:
+      method: "TBD"
+      path: "TBD"
+      file_format: "TBD"
+      description: "Массовый импорт тест-кейсов из файла"
+
+    set_status:
+      method: "TBD"
+      path: "TBD"
+      description: "Установка статуса тест-кейса"
+
+    archive_test_case:
+      method: "TBD"
+      path: "TBD"
+      description: "Архивирование тест-кейса"
+
+    update_structure:
+      method: "TBD"
+      path: "TBD"
+      description: "Изменение структуры (папки, разделы)"
+
+  statuses:
+    review:
+      name: "Ревью"
+      id: "TBD"
+    archive:
+      name: "Архив"
+      id: "TBD"
+    draft:
+      name: "Черновик"
+      id: "TBD"
+    error:
+      name: "Ошибка"
+      id: "TBD"
+    ready:
+      name: "Готов"
+      id: "TBD"
+
+  export_format:
+    file_type: "TBD"
+    columns: "TBD"
+    description: "Формат файла экспорта из документации DoQA"
+
+  import_format:
+    file_type: "TBD"
+    columns: "TBD"
+    description: "Формат файла импорта из документации DoQA"
+
+# Статус контракта
+contract_status:
+  ready: false
+  notes: |
+    Контракт не заполнен. Все реальные запросы к DoQA заблокированы.
+    Адаптер работает в mock/dry-run режиме.
+    Для активации реального режима необходимо заполнить TBD-значения
+    на основе официальной документации DoQA API 4.3.1.

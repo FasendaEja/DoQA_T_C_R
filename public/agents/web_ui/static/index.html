@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Agent System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .stages {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stage {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        
+        .stage.completed {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .stage.running {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .stage.pending {
+            border-color: #6c757d;
+            background: #e9ecef;
+        }
+        
+        .stage h3 {
+            font-size: 1em;
+            margin-bottom: 5px;
+        }
+        
+        .stage p {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🤖 QA Agent System</h1>
+            <p>Агентная система для подготовки, анализа и управления тест-кейсами</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Запуск пайплайна</h2>
+            <form id="pipelineForm">
+                <div class="form-group">
+                    <label for="requirements">Текст требований:</label>
+                    <textarea id="requirements" placeholder="Введите текст требований..." required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="oldRequirements">Старая версия требований (опционально):</label>
+                    <textarea id="oldRequirements" placeholder="Введите старую версию для сравнения..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sourceInfo">Источник:</label>
+                    <input type="text" id="sourceInfo" placeholder="Например: JIRA-123, docs/requirements.md">
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="autoApprove">
+                    <label for="autoApprove">Автоматическое подтверждение всех этапов</label>
+                </div>
+                
+                <button type="submit">Запустить пайплайн</button>
+            </form>
+            
+            <div id="status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Этапы пайплайна</h2>
+            <div id="stages" class="stages">
+                <div class="stage pending">
+                    <h3>Ожидание запуска</h3>
+                    <p>Запустите пайплайн для начала работы</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Конфигурация</h2>
+            <div id="config">
+                <p>Загрузка конфигурации...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '/api';
+        
+        // Загрузка конфигурации
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config`);
+                const config = await response.json();
+                
+                const configDiv = document.getElementById('config');
+                configDiv.innerHTML = `
+                    <p><strong>LLM:</strong> ${config.llm.model} (${config.llm.base_url})</p>
+                    <p><strong>DoQA:</strong> ${config.doqa.base_url || 'не настроен'} (контракт: ${config.doqa.contract_ready ? 'готов' : 'TBD'})</p>
+                    <p><strong>Redmine:</strong> ${config.redmine.configured ? 'настроен' : 'не настроен'}</p>
+                    <p><strong>Кодовая база:</strong> ${config.codebase.access_mode}</p>
+                `;
+            } catch (error) {
+                console.error('Ошибка загрузки конфигурации:', error);
+            }
+        }
+        
+        // Запуск пайплайна
+        document.getElementById('pipelineForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status info';
+            statusDiv.textContent = 'Запуск пайплайна...';
+            
+            const requirements = document.getElementById('requirements').value;
+            const oldRequirements = document.getElementById('oldRequirements').value;
+            const sourceInfo = document.getElementById('sourceInfo').value;
+            const autoApprove = document.getElementById('autoApprove').checked;
+            
+            try {
+                const response = await fetch(`${API_BASE}/pipeline/run`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        requirements_text: requirements,
+                        old_requirements_text: oldRequirements || null,
+                        source_info: sourceInfo,
+                        auto_approve: autoApprove,
+                    }),
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = `Пайплайн завершён. Текущий этап: ${result.current_stage}`;
+                    
+                    // Обновление этапов
+                    updateStages(result.stages);
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = `Ошибка: ${result.detail || 'Неизвестная ошибка'}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Ошибка: ${error.message}`;
+            }
+        });
+        
+        // Обновление отображения этапов
+        function updateStages(stages) {
+            const stagesDiv = document.getElementById('stages');
+            stagesDiv.innerHTML = '';
+            
+            for (const [stageId, stage] of Object.entries(stages)) {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = `stage ${stage.status}`;
+                
+                stageDiv.innerHTML = `
+                    <h3>${stage.stage_name}</h3>
+                    <p>Статус: ${stage.status}</p>
+                    <p>Итерация: ${stage.iteration}</p>
+                `;
+                
+                stagesDiv.appendChild(stageDiv);
+            }
+        }
+        
+        // Загрузка при старте
+        loadConfig();
+    </script>
+</body>
+</html>
