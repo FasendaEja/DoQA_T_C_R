@@ -1,12 +1,11 @@
 import { useState } from 'react';
 
-type TabId = 'overview' | 'setup' | 'usage' | 'api' | 'files';
+type TabId = 'overview' | 'setup' | 'usage' | 'files';
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview', label: 'Обзор', icon: '📋' },
   { id: 'setup', label: 'Настройка', icon: '⚙️' },
   { id: 'usage', label: 'Запуск', icon: '🚀' },
-  { id: 'api', label: 'API DoQA', icon: '🔌' },
   { id: 'files', label: 'Структура', icon: '📁' },
 ];
 
@@ -40,49 +39,33 @@ function Overview() {
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          🤖 QA Agent System
+          🤖 DoQA Review Tool
         </h2>
         <p className="text-gray-600 mb-3">
-          Агентная система для подготовки, анализа и управления тест-кейсами.
-          Автоматизация процесса тестирования с использованием LangGraph и LLM (qwen3.8).
+          Утилита для автоматического ревью тест-кейсов DoQA 4.3.1 с использованием ИИ.
+          Обрабатывает файлы экспорта DoQA из папки input/.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
-          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">LangGraph</span>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Pydantic v2</span>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">FastAPI</span>
           <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">Qwen 3.8</span>
           <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">DoQA 4.3.1</span>
-        </div>
-      </div>
-
-      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <h3 className="font-semibold text-purple-800 mb-2">📦 Структура проектов</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="bg-white border border-gray-200 rounded p-3">
-            <h4 className="font-semibold text-gray-800 text-sm">Review Utility</h4>
-            <p className="text-xs text-gray-500">Заморожен — стабильная версия утилиты ревью</p>
-          </div>
-          <div className="bg-white border border-green-300 rounded p-3">
-            <h4 className="font-semibold text-green-800 text-sm">agents ✅</h4>
-            <p className="text-xs text-gray-500">Все 4 шага завершены. Проект готов к использованию.</p>
-          </div>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Python</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">📥 Источник тест-кейсов</h3>
-        <ul className="space-y-2 text-gray-600">
-          <li>✓ Через API DoQA: <code className="bg-gray-100 px-1 rounded text-sm">GET /api/cases/{'{caseId}'}</code></li>
-          <li>✓ Из файла экспорта DoQA (xlsx)</li>
-        </ul>
-      </div>        <div className="bg-white border border-gray-200 rounded-lg p-5">
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
+          <h3 className="font-semibold text-lg mb-3">📥 Источник тест-кейсов</h3>
+          <ul className="space-y-2 text-gray-600">
+            <li>✓ Обработка файлов экспорта DoQA (xlsx)</li>
+            <li>✓ Автоматическое удаление обработанных файлов</li>
+          </ul>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-5">
           <h3 className="font-semibold text-lg mb-3">🧠 Анализ ИИ</h3>
           <ul className="space-y-2 text-gray-600">
             <li>✓ Каждый кейс — отдельный запрос</li>
             <li>✓ Промт в редактируемом файле</li>
             <li>✓ Qwen3.8 / OpenAI / другие</li>
-            <li>✓ <strong>Автоматический цикл генерации и ревью</strong> (до 3 итераций)</li>
           </ul>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -100,13 +83,6 @@ function Overview() {
             <li>✓ Простой запуск одной командой</li>
           </ul>
         </div>
-      </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-amber-800 text-sm">
-          <strong>⚠️ Важно:</strong> Точные эндпоинты API DoQA доступны через Swagger UI
-          (Профиль → Public API). В утилите используется <code className="bg-amber-100 px-1 rounded">GET /api/cases/{'{caseId}'}</code>.
-        </p>
       </div>
     </div>
   );
@@ -137,28 +113,10 @@ AI_MODEL=qwen3.8-max`}</Code>
         <p className="text-sm text-gray-500 mt-2">
           Поместите файлы xlsx в папку <code className="bg-white px-1 rounded">input/</code>. Утилита обработает все файлы и удалит их.
         </p>
-        <p className="text-gray-600 mt-3">Минимальный .env для режима API:</p>
-        <Code lang="env">{`DOQA_MODE=api
-DOQA_SPACE_ID=123
-DOQA_CASE_IDS=456,789,101
-DOQA_API_TOKEN=your_doqa_token
-AI_BASE_URL=https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
-AI_API_KEY=sk-xxxxxxxxxxxxxxxx
-AI_MODEL=qwen3.8-max`}</Code>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">3. Получение API-токена DoQA</h3>
-        <ol className="space-y-2 text-gray-600 list-decimal list-inside">
-          <li>Войдите в DoQA</li>
-          <li>Имя в правом верхнем углу → <strong>Профиль</strong></li>
-          <li>Раздел <strong>API-токены</strong> → <strong>Создать API-токен</strong></li>
-          <li>Скопируйте значение (показывается один раз!)</li>
-        </ol>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">4. Получение API-ключа Qwen3.8</h3>
+        <h3 className="font-semibold text-lg mb-3">3. Получение API-ключа Qwen3.8</h3>
         <ol className="space-y-2 text-gray-600 list-decimal list-inside">
           <li>
             Войдите в{' '}
@@ -190,12 +148,7 @@ AI_MODEL=qwen3.8-max`}</Code>
             </thead>
             <tbody>
               {[
-                ['DOQA_BASE_URL', 'URL DoQA (по умолчанию https://app.doqa.app)'],
-                ['DOQA_API_TOKEN', 'API-токен DoQA'],
-                ['DOQA_MODE', 'Режим получения тест-кейсов: api или file'],
-                ['DOQA_SPACE_ID', 'ID пространства (для режима api)'],
-                ['DOQA_CASE_IDS', 'ID кейсов через запятую (опционально для фильтрации)'],
-                ['INPUT_DIR', 'Папка с файлами экспорта (по умолчанию input, для режима file)'],
+                ['INPUT_DIR', 'Папка с файлами экспорта (по умолчанию input)'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -321,19 +274,11 @@ function Usage() {
       <div className="bg-white border border-gray-200 rounded-lg p-5">
         <h3 className="font-semibold text-lg mb-3">Как это работает</h3>
         <ol className="space-y-3 text-gray-600 list-decimal list-inside">
-          <li>
-            Утилита читает <code className="bg-gray-100 px-1 rounded">.env</code> и определяет источник кейсов по параметру <code className="bg-gray-100 px-1 rounded">DOQA_MODE</code>:
-            <ul className="ml-6 mt-1 list-disc text-sm">
-              <li><code>DOQA_MODE=api</code> — загружает через API DoQA (требует <code>DOQA_SPACE_ID</code> и <code>DOQA_CASE_IDS</code>)</li>
-              <li><code>DOQA_MODE=file</code> — обрабатывает все xlsx файлы из папки <code>input/</code>, затем удаляет их</li>
-              <li>Если <code>DOQA_MODE</code> не указан — автоопределение по наличию параметров</li>
-            </ul>
-          </li>
-          <li>
-            Загружает промт из <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и правила из <code className="bg-gray-100 px-1 rounded">DoQA_test_case_review_rules_.txt</code>
-          </li>
+          <li>Утилита читает все xlsx файлы из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
+          <li>Загружает промт из <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и правила из <code className="bg-gray-100 px-1 rounded">DoQA_test_case_review_rules_.txt</code></li>
           <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
           <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
+          <li>Обработанные файлы удаляются из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
         </ol>
       </div>
 
@@ -366,77 +311,7 @@ function Usage() {
   );
 }
 
-function Api() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">API DoQA 4.3.1</h2>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-        <h3 className="font-semibold text-blue-800 mb-2">📖 Документация</h3>
-        <p className="text-blue-700">
-          Swagger UI доступен в профиле пользователя: нажмите на имя → <strong>Public API</strong>.
-          Там же можно скачать OpenAPI 3.0 спецификацию.
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Эндпоинт получения тест-кейса</h3>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <code className="text-lg font-mono text-blue-700">
-            GET /api/cases/{'{caseId}'}?spaceId={'{spaceId}'}
-          </code>
-        </div>
-        <ul className="space-y-2 text-gray-600 mb-4">
-          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">caseId</code> — ID тест-кейса (в пути)</li>
-          <li><code className="bg-gray-100 px-2 py-0.5 rounded text-sm font-mono">spaceId</code> — ID пространства (query-параметр)</li>
-        </ul>
-        <Code>{`curl -X GET "https://app.doqa.app/api/cases/123?spaceId=456" \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Accept: application/json"`}</Code>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Авторизация</h3>
-        <Code>{`Authorization: Bearer <персональный_API_токен>`}</Code>
-        <p className="text-gray-600 text-sm mt-2">
-          Токен не привязан к сессии и не истекает. Создаётся в профиле (раздел «API-токены»).
-          Лимит: до 10 токенов на пользователя.
-        </p>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
-        <h3 className="font-semibold text-lg mb-3">Доступные группы методов API</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-200 px-3 py-2 text-left">Группа</th>
-                <th className="border border-gray-200 px-3 py-2 text-left">Операции</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ['Авторизация', 'Получение токена по логину/паролю'],
-                ['Тест-кейсы', 'Создание, чтение, изменение, список, экспорт в xlsx'],
-                ['Чек-листы', 'Создание, чтение, изменение, список'],
-                ['Прогоны', 'Создание, список, детали, изменение статуса'],
-                ['Баги', 'Баг-репорты прогона и пространства'],
-                ['Статистика', 'Данные дашборда'],
-                ['Импорт', 'Импорт проекта и статус'],
-                ['Автотесты', 'Создание прогона из отчёта'],
-              ].map(([g, o]) => (
-                <tr key={g} className="hover:bg-gray-50">
-                  <td className="border border-gray-200 px-3 py-2 font-semibold">{g}</td>
-                  <td className="border border-gray-200 px-3 py-2">{o}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function Files() {
   return (
@@ -558,7 +433,6 @@ export default function App() {
       case 'overview': return <Overview />;
       case 'setup': return <Setup />;
       case 'usage': return <Usage />;
-      case 'api': return <Api />;
       case 'files': return <Files />;
     }
   };
@@ -571,13 +445,12 @@ export default function App() {
             🤖
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">QA Agent System</h1>
-            <p className="text-sm text-gray-500">Агентная система подготовки тест-кейсов</p>
+            <h1 className="text-xl font-bold text-gray-800">DoQA Review Tool</h1>
+            <p className="text-sm text-gray-500">Ревью тест-кейсов с ИИ</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">DoQA 4.3.1</span>
-            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">LangGraph</span>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Python 3.11+</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Python</span>
           </div>
         </div>
       </header>
@@ -605,12 +478,7 @@ export default function App() {
 
       <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-5xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-          <p>QA Agent System • DoQA 4.3.1 • Python 3.11+ • LangGraph</p>
-          <p className="mt-1">
-            Проекты:{' '}
-            <span className="font-medium">Review Utility</span> (заморожен) •{' '}
-            <span className="font-medium text-purple-600">agents</span> (в разработке)
-          </p>
+          <p>DoQA Review Tool • DoQA 4.3.1 • Python</p>
           <p className="mt-1">
             Документация:{' '}
             <a href="https://docs.doqa.app" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">

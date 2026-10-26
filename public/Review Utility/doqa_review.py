@@ -2,13 +2,12 @@
 """
 Утилита ревью тест-кейсов DoQA с использованием ИИ.
 
-DoQA 4.3.1 | Эндпоинт: GET /api/cases/{caseId}
+Обрабатывает файлы экспорта DoQA (xlsx) из папки input/
 Все параметры берутся из .env файла (см. .env.example).
 """
 
 import os
 import sys
-import requests
 import openpyxl
 from datetime import datetime
 from pathlib import Path
@@ -20,12 +19,6 @@ _env_path = Path(__file__).parent / ".env"
 load_dotenv(_env_path if _env_path.exists() else None)
 
 # ── Конфигурация ─────────────────────────────────────────────
-DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
-DOQA_TOKEN = os.getenv("DOQA_API_TOKEN", "")
-DOQA_MODE = os.getenv("DOQA_MODE", "").lower()  # api или file
-DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
-DOQA_CASE_IDS = os.getenv("DOQA_CASE_IDS", "")
-
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
@@ -38,57 +31,7 @@ INPUT_DIR = os.getenv("INPUT_DIR", "input")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "review_results")
 
 
-# ── 1. Получение тест-кейсов через API DoQA ──────────────────
-def get_cases_from_api(space_id: str, case_ids: list[str]) -> list[dict]:
-    """Получение тест-кейсов через GET /api/cases/{caseId}."""
-    if not DOQA_TOKEN:
-        sys.exit("ОШИБКА: Не указан DOQA_API_TOKEN в .env")
-
-    headers = {
-        "Authorization": f"Bearer {DOQA_TOKEN}",
-        "Accept": "application/json",
-    }
-    cases = []
-
-    for cid in case_ids:
-        url = f"{DOQA_BASE_URL}/api/cases/{cid}"
-        print(f"  → GET {url} (spaceId={space_id})")
-
-        try:
-            r = requests.get(url, headers=headers, params={"spaceId": space_id}, timeout=30)
-            r.raise_for_status()
-            cases.append(_normalize(r.json()))
-            print(f"    ✓ Кейс {cid} загружен")
-        except requests.HTTPError as e:
-            print(f"    ✗ HTTP {r.status_code}: {e}")
-        except Exception as e:
-            print(f"    ✗ Ошибка: {e}")
-
-    return cases
-
-
-def _normalize( dict) -> dict:
-    """Приведение ответа API к единому формату."""
-    steps = []
-    for i, s in enumerate(data.get("steps", []), 1):
-        steps.append({
-            "number": i,
-            "action": s.get("action", s.get("step", "")),
-            "expected": s.get("expected_result", s.get("expectedResult", "")),
-            "data": s.get("test_data", s.get("testData", "")),
-        })
-    return {
-        "id": data.get("id", ""),
-        "title": data.get("title", data.get("name", "")),
-        "description": data.get("description", ""),
-        "preconditions": data.get("preconditions", ""),
-        "postconditions": data.get("postconditions", ""),
-        "priority": data.get("priority", ""),
-        "steps": steps,
-    }
-
-
-# ── 2. Получение тест-кейсов из файла экспорта DoQA ──────────
+# ── 1. Получение тест-кейсов из файла экспорта DoQA ──────────
 def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict]:
     """Парсинг xlsx-файла экспорта DoQA."""
     if not os.path.exists(file_path):
@@ -280,63 +223,42 @@ def main():
     print(f"  .env: {_env_path if _env_path.exists() else '(не найден)'}")
     print(f"  AI: {AI_MODEL} @ {AI_BASE_URL}")
 
-    if DOQA_MODE == "api":
-        if not DOQA_SPACE_ID:
-            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_SPACE_ID")
-        if not DOQA_CASE_IDS:
-            sys.exit("ОШИБКА: DOQA_MODE=api, но не указан DOQA_CASE_IDS")
-        print(f"\n[1] Режим: API DoQA")
-        print(f"    Пространство: {DOQA_SPACE_ID}")
-        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
-        cases = get_cases_from_api(DOQA_SPACE_ID, ids)
-
-    elif DOQA_MODE == "file":
-        print(f"\n[1] Режим: Обработка файлов из папки {INPUT_DIR}/")
-        if not os.path.exists(INPUT_DIR):
-            os.makedirs(INPUT_DIR)
-        xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
-        if not xlsx_files:
-            sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx")
-        print(f"    Найдено файлов: {len(xlsx_files)}")
-        ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
-        cases = []
-        for filename in xlsx_files:
-            file_path = os.path.join(INPUT_DIR, filename)
-            print(f"\n  → Обработка файла: {filename}")
-            file_cases = get_cases_from_file(file_path, ids)
-            cases.extend(file_cases)
-            try:
-                os.remove(file_path)
-                print(f"    ✓ Файл удалён: {filename}")
-            except Exception as e:
-                print(f"    ⚠ Не удалось удалить файл {filename}: {e}")
-
-    elif DOQA_MODE == "":
-        input_has_files = False
-        if os.path.exists(INPUT_DIR):
-            input_has_files = any(f.endswith(('.xlsx', '.xls')) for f in os.listdir(INPUT_DIR))
-        if input_has_files:
-            print(f"\n[1] Режим: Обработка файлов из папки {INPUT_DIR}/ (авто)")
-            xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
-            ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()] if DOQA_CASE_IDS else None
-            cases = []
-            for filename in xlsx_files:
-                file_path = os.path.join(INPUT_DIR, filename)
-                file_cases = get_cases_from_file(file_path, ids)
-                cases.extend(file_cases)
-                try:
-                    os.remove(file_path)
-                    print(f"    ✓ Файл удалён: {filename}")
-                except Exception as e:
-                    print(f"    ⚠ Не удалось удалить файл: {e}")
-        elif DOQA_SPACE_ID and DOQA_CASE_IDS:
-            print(f"\n[1] Режим: API DoQA (авто)")
-            ids = [x.strip() for x in DOQA_CASE_IDS.split(",") if x.strip()]
-            cases = get_cases_from_api(DOQA_SPACE_ID, ids)
-        else:
-            sys.exit("ОШИБКА: Не указан DOQA_MODE. Укажите api или file")
-    else:
-        sys.exit(f"ОШИБКА: Неверное DOQA_MODE='{DOQA_MODE}'")
+    print(f"\n[1] Обработка файлов из папки {INPUT_DIR}/")
+    
+    # Создаём папку input, если её нет
+    if not os.path.exists(INPUT_DIR):
+        os.makedirs(INPUT_DIR)
+        print(f"    Создана папка: {INPUT_DIR}/")
+    
+    # Ищем все xlsx файлы в папке input
+    xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
+    
+    if not xlsx_files:
+        sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx\n"
+                 f"Поместите файлы экспорта DoQA в папку {INPUT_DIR}/ и запустите утилиту снова")
+    
+    print(f"    Найдено файлов: {len(xlsx_files)}")
+    for f in xlsx_files:
+        print(f"      - {f}")
+    
+    # Обрабатываем каждый файл по очереди
+    cases = []
+    for filename in xlsx_files:
+        file_path = os.path.join(INPUT_DIR, filename)
+        print(f"\n  → Обработка файла: {filename}")
+        
+        # 1) Считываем файл
+        file_cases = get_cases_from_file(file_path)
+        cases.extend(file_cases)
+        
+        # 2) Ревью будет выполнен позже (после сбора всех кейсов)
+        
+        # 3) Удаляем файл из папки input
+        try:
+            os.remove(file_path)
+            print(f"    ✓ Файл удалён: {filename}")
+        except Exception as e:
+            print(f"    ⚠ Не удалось удалить файл {filename}: {e}")
 
     if not cases:
         sys.exit("ОШИБКА: Не удалось получить тест-кейсы")
