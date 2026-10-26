@@ -30,7 +30,19 @@ DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
 EXPORT_MODE = os.getenv("EXPORT_MODE", "filters").lower()
 DOQA_STATUSES = os.getenv("DOQA_STATUSES", "")
 DOQA_CREATOR_IDS = os.getenv("DOQA_CREATOR_IDS", "")
+DOQA_RESPONSIBLE_IDS = os.getenv("DOQA_RESPONSIBLE_IDS", "")
+DOQA_FOLDER_IDS = os.getenv("DOQA_FOLDER_IDS", "")
+DOQA_TAG_IDS = os.getenv("DOQA_TAG_IDS", "")
+DOQA_ATTRIBUTE_IDS = os.getenv("DOQA_ATTRIBUTE_IDS", "")
+DOQA_PRIORITIES = os.getenv("DOQA_PRIORITIES", "")
+DOQA_SEARCH = os.getenv("DOQA_SEARCH", "")
 DOQA_CHANGED_AT_FILTER = os.getenv("DOQA_CHANGED_AT_FILTER", "1")
+DOQA_CREATED_AT_FROM = os.getenv("DOQA_CREATED_AT_FROM", "")
+DOQA_CREATED_AT_TO = os.getenv("DOQA_CREATED_AT_TO", "")
+DOQA_SORT = os.getenv("DOQA_SORT", "")
+DOQA_DIRECTION = os.getenv("DOQA_DIRECTION", "")
+DOQA_AUTOMATION_STATUSES = os.getenv("DOQA_AUTOMATION_STATUSES", "")
+DOQA_CREATION_SOURCES = os.getenv("DOQA_CREATION_SOURCES", "")
 
 # AI
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
@@ -91,6 +103,41 @@ def export_cases_from_doqa() -> str:
             body["creatorIds"] = creator_ids
             print(f"    ID авторов: {creator_ids}")
         
+        # ID ответственных лиц
+        if DOQA_RESPONSIBLE_IDS:
+            responsible_ids = [int(id.strip()) for id in DOQA_RESPONSIBLE_IDS.split(",") if id.strip()]
+            body["responsibleIds"] = responsible_ids
+            print(f"    ID ответственных: {responsible_ids}")
+        
+        # ID папок
+        if DOQA_FOLDER_IDS:
+            folder_ids = [int(id.strip()) for id in DOQA_FOLDER_IDS.split(",") if id.strip()]
+            body["folderIds"] = folder_ids
+            print(f"    ID папок: {folder_ids}")
+        
+        # ID тегов
+        if DOQA_TAG_IDS:
+            tag_ids = [int(id.strip()) for id in DOQA_TAG_IDS.split(",") if id.strip()]
+            body["tagIds"] = tag_ids
+            print(f"    ID тегов: {tag_ids}")
+        
+        # ID атрибутов
+        if DOQA_ATTRIBUTE_IDS:
+            attribute_ids = [int(id.strip()) for id in DOQA_ATTRIBUTE_IDS.split(",") if id.strip()]
+            body["attributeIds"] = attribute_ids
+            print(f"    ID атрибутов: {attribute_ids}")
+        
+        # Приоритеты
+        if DOQA_PRIORITIES:
+            priorities = [p.strip() for p in DOQA_PRIORITIES.split(",") if p.strip()]
+            body["priorities"] = priorities
+            print(f"    Приоритеты: {priorities}")
+        
+        # Полнотекстовый поиск
+        if DOQA_SEARCH:
+            body["search"] = DOQA_SEARCH
+            print(f"    Поиск: {DOQA_SEARCH}")
+        
         # Фильтр по дате изменения
         if DOQA_CHANGED_AT_FILTER == "2":
             # Последние сутки
@@ -103,6 +150,39 @@ def export_cases_from_doqa() -> str:
             body["changedAt"] = {"from": from_date}
             print(f"    Изменено за последний час (с {from_date})")
         # DOQA_CHANGED_AT_FILTER == "1" — фильтр не используется
+        
+        # Фильтр по дате создания
+        if DOQA_CREATED_AT_FROM or DOQA_CREATED_AT_TO:
+            created_at = {}
+            if DOQA_CREATED_AT_FROM:
+                created_at["from"] = DOQA_CREATED_AT_FROM
+                print(f"    Создано с: {DOQA_CREATED_AT_FROM}")
+            if DOQA_CREATED_AT_TO:
+                created_at["to"] = DOQA_CREATED_AT_TO
+                print(f"    Создано до: {DOQA_CREATED_AT_TO}")
+            if created_at:
+                body["createdAt"] = created_at
+        
+        # Сортировка
+        if DOQA_SORT:
+            body["sort"] = DOQA_SORT
+            print(f"    Сортировка: {DOQA_SORT}")
+            
+            if DOQA_DIRECTION:
+                body["direction"] = DOQA_DIRECTION
+                print(f"    Направление: {DOQA_DIRECTION}")
+        
+        # Статусы автоматизации
+        if DOQA_AUTOMATION_STATUSES:
+            automation_statuses = [s.strip() for s in DOQA_AUTOMATION_STATUSES.split(",") if s.strip()]
+            body["automationStatuses"] = automation_statuses
+            print(f"    Статусы автоматизации: {automation_statuses}")
+        
+        # Источники создания
+        if DOQA_CREATION_SOURCES:
+            creation_sources = [s.strip() for s in DOQA_CREATION_SOURCES.split(",") if s.strip()]
+            body["creationSources"] = creation_sources
+            print(f"    Источники создания: {creation_sources}")
 
     else:
         sys.exit(f"ОШИБКА: Неверное значение EXPORT_MODE='{EXPORT_MODE}'. Допустимые: ids, filters")
