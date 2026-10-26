@@ -54,10 +54,11 @@ function Overview() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h3 className="font-semibold text-lg mb-3">📥 Источник тест-кейсов</h3>
+          <h3 className="font-semibold text-lg mb-3">📥 Два режима работы</h3>
           <ul className="space-y-2 text-gray-600">
-            <li>✓ Обработка файлов экспорта DoQA (xlsx)</li>
-            <li>✓ Автоматическое удаление обработанных файлов</li>
+            <li>✓ <strong>file</strong> — обработка файлов из папки input/</li>
+            <li>✓ <strong>export</strong> — автоматический экспорт из DoQA API</li>
+            <li>✓ Экспорт по ID кейсов или фильтрам</li>
           </ul>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -148,7 +149,15 @@ AI_MODEL=qwen3.8-max`}</Code>
             </thead>
             <tbody>
               {[
+                ['MODE', 'Режим работы: file или export'],
                 ['INPUT_DIR', 'Папка с файлами экспорта (по умолчанию input)'],
+                ['DOQA_BASE_URL', 'Базовый URL DoQA API (для режима export)'],
+                ['DOQA_API_TOKEN', 'Bearer токен DoQA API (для режима export)'],
+                ['DOQA_SPACE_ID', 'ID пространства DoQA (для режима export)'],
+                ['EXPORT_MODE', 'Вариант экспорта: ids или filters (для режима export)'],
+                ['DOQA_STATUSES', 'Статусы для фильтрации: ready,draft,archived,broken'],
+                ['DOQA_CREATOR_IDS', 'ID авторов для фильтрации (через запятую)'],
+                ['DOQA_CHANGED_AT_FILTER', 'Фильтр по дате: 1-нет, 2-сутки, 3-час'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -273,13 +282,71 @@ function Usage() {
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">
         <h3 className="font-semibold text-lg mb-3">Как это работает</h3>
-        <ol className="space-y-3 text-gray-600 list-decimal list-inside">
-          <li>Утилита читает все xlsx файлы из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
-          <li>Загружает промт из <code className="bg-gray-100 px-1 rounded">prompt.txt</code> и правила из <code className="bg-gray-100 px-1 rounded">DoQA_test_case_review_rules_.txt</code></li>
-          <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
-          <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
-          <li>Обработанные файлы удаляются из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
-        </ol>
+        
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2">Режим <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">MODE=file</code></h4>
+            <ol className="space-y-2 text-gray-600 list-decimal list-inside ml-4">
+              <li>Утилита читает все xlsx файлы из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
+              <li>Загружает промт и правила</li>
+              <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
+              <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
+              <li>Обработанные файлы удаляются из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
+            </ol>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-2">Режим <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">MODE=export</code></h4>
+            <ol className="space-y-2 text-gray-600 list-decimal list-inside ml-4">
+              <li>Утилита экспортирует тест-кейсы из DoQA через API <code className="bg-gray-100 px-1 rounded">POST /api/cases/export</code></li>
+              <li>Экспортированный файл сохраняется в папку <code className="bg-gray-100 px-1 rounded">input/</code></li>
+              <li>Далее работает как в режиме <code className="bg-gray-100 px-1 rounded">file</code></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
+        <h3 className="font-semibold text-lg mb-3">🚀 Режим экспорта из DoQA</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">Вариант A: Экспорт по списку ID</h4>
+            <Code lang="env">{`MODE=export
+EXPORT_MODE=ids
+DOQA_BASE_URL=https://app.doqa.app
+DOQA_API_TOKEN=your_token
+DOQA_SPACE_ID=123`}</Code>
+            <p className="text-sm text-gray-600 mt-2">
+              При запуске утилита запросит ввод ID кейсов через запятую
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-blue-800 mb-2">Вариант B: Экспорт по фильтрам</h4>
+            <Code lang="env">{`MODE=export
+EXPORT_MODE=filters
+DOQA_BASE_URL=https://app.doqa.app
+DOQA_API_TOKEN=your_token
+DOQA_SPACE_ID=123
+
+# Фильтры (опционально):
+DOQA_STATUSES=draft,broken,review
+DOQA_CREATOR_IDS=10,20,30
+DOQA_CHANGED_AT_FILTER=2`}</Code>
+            
+            <div className="mt-3 space-y-2 text-sm text-gray-600">
+              <p><strong>DOQA_STATUSES:</strong> ready, draft, archived, broken (через запятую)</p>
+              <p><strong>DOQA_CREATOR_IDS:</strong> ID авторов через запятую</p>
+              <p><strong>DOQA_CHANGED_AT_FILTER:</strong></p>
+              <ul className="ml-4 list-disc">
+                <li><code className="bg-white px-1 rounded">1</code> — фильтр не используется</li>
+                <li><code className="bg-white px-1 rounded">2</code> — изменения за последние сутки</li>
+                <li><code className="bg-white px-1 rounded">3</code> — изменения за последний час</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-5">

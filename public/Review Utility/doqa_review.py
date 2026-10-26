@@ -9,7 +9,8 @@
 import os
 import sys
 import openpyxl
-from datetime import datetime
+import requests
+from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError, APIStatusError
@@ -19,6 +20,19 @@ _env_path = Path(__file__).parent / ".env"
 load_dotenv(_env_path if _env_path.exists() else None)
 
 # ── Конфигурация ─────────────────────────────────────────────
+MODE = os.getenv("MODE", "file").lower()
+INPUT_DIR = os.getenv("INPUT_DIR", "input")
+
+# DoQA API
+DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
+DOQA_API_TOKEN = os.getenv("DOQA_API_TOKEN", "")
+DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
+EXPORT_MODE = os.getenv("EXPORT_MODE", "filters").lower()
+DOQA_STATUSES = os.getenv("DOQA_STATUSES", "")
+DOQA_CREATOR_IDS = os.getenv("DOQA_CREATOR_IDS", "")
+DOQA_CHANGED_AT_FILTER = os.getenv("DOQA_CHANGED_AT_FILTER", "1")
+
+# AI
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "qwen3.8-max")
@@ -27,11 +41,105 @@ AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "3"))
 
 PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.txt")
 RULES_FILE = os.getenv("RULES_FILE", "DoQA_test_case_review_rules_.txt")
-INPUT_DIR = os.getenv("INPUT_DIR", "input")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "review_results")
 
 
-# ── 1. Получение тест-кейсов из файла экспорта DoQA ──────────
+# ── 1. Экспорт тест-кейсов из DoQA через API ─────────────────
+def export_cases_from_doqa() -> str:
+    """Экспорт тест-кейсов из DoQA через POST /api/cases/export."""
+    if not DOQA_API_TOKEN:
+        sys.exit("ОШИБКА: Не указан DOQA_API_TOKEN в .env")
+    if not DOQA_SPACE_ID:
+        sys.exit("ОШИБКА: Не указан DOQA_SPACE_ID в .env")
+
+    # Создаём папку input, если её нет
+    if not os.path.exists(INPUT_DIR):
+        os.makedirs(INPUT_DIR)
+
+    # Формируем тело запроса
+    body = {
+        "spaceId": int(DOQA_SPACE_ID),
+        "format": "xlsx",
+        # columns не указываем — экспортируются все колонки
+    }
+
+    if EXPORT_MODE == "ids":
+        # Режим 1: экспорт по списку ID из консоли
+        print("\n[1] Режим: Экспорт по списку ID кейсов")
+        print("    Введите ID тест-кейсов через запятую:")
+        ids_input = input("    > ").strip()
+        if not ids_input:
+            sys.exit("ОШИБКА: Не указаны ID кейсов")
+        
+        item_ids = [int(id.strip()) for id in ids_input.split(",") if id.strip()]
+        body["itemIds"] = item_ids
+        print(f"    ID кейсов: {item_ids}")
+
+    elif EXPORT_MODE == "filters":
+        # Режим 2: экспорт по фильтрам
+        print("\n[1] Режим: Экспорт по фильтрам")
+        
+        # Статусы
+        if DOQA_STATUSES:
+            statuses = [s.strip() for s in DOQA_STATUSES.split(",") if s.strip()]
+            body["statuses"] = statuses
+            print(f"    Статусы: {statuses}")
+        
+        # ID авторов
+        if DOQA_CREATOR_IDS:
+            creator_ids = [int(id.strip()) for id in DOQA_CREATOR_IDS.split(",") if id.strip()]
+            body["creatorIds"] = creator_ids
+            print(f"    ID авторов: {creator_ids}")
+        
+        # Фильтр по дате изменения
+        if DOQA_CHANGED_AT_FILTER == "2":
+            # Последние сутки
+            from_date = (datetime.now() - timedelta(days=1)).isoformat()
+            body["changedAt"] = {"from": from_date}
+            print(f"    Изменено за последние сутки (с {from_date})")
+        elif DOQA_CHANGED_AT_FILTER == "3":
+            # Последний час
+            from_date = (datetime.now() - timedelta(hours=1)).isoformat()
+            body["changedAt"] = {"from": from_date}
+            print(f"    Изменено за последний час (с {from_date})")
+        # DOQA_CHANGED_AT_FILTER == "1" — фильтр не используется
+
+    else:
+        sys.exit(f"ОШИБКА: Неверное значение EXPORT_MODE='{EXPORT_MODE}'. Допустимые: ids, filters")
+
+    # Отправляем запрос
+    url = f"{DOQA_BASE_URL}/api/cases/export"
+    headers = {
+        "Authorization": f"Bearer {DOQA_API_TOKEN}",
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+
+    print(f"\n  → POST {url}")
+    print(f"    Тело запроса: {body}")
+
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=60)
+        response.raise_for_status()
+
+        # Сохраняем файл
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"doqa_export_{timestamp}.xlsx"
+        file_path = os.path.join(INPUT_DIR, filename)
+
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+
+        print(f"    ✓ Экспорт сохранён: {filename} ({len(response.content)} байт)")
+        return file_path
+
+    except requests.exceptions.HTTPError as e:
+        sys.exit(f"ОШИБКА: HTTP {response.status_code}\n{response.text}")
+    except Exception as e:
+        sys.exit(f"ОШИБКА: {e}")
+
+
+# ── 2. Получение тест-кейсов из файла экспорта DoQA ──────────
 def get_cases_from_file(file_path: str, case_ids: list[str] = None) -> list[dict]:
     """Парсинг xlsx-файла экспорта DoQA."""
     if not os.path.exists(file_path):
@@ -222,25 +330,35 @@ def main():
     print("=" * 60)
     print(f"  .env: {_env_path if _env_path.exists() else '(не найден)'}")
     print(f"  AI: {AI_MODEL} @ {AI_BASE_URL}")
+    print(f"  Режим: {MODE}")
 
-    print(f"\n[1] Обработка файлов из папки {INPUT_DIR}/")
-    
     # Создаём папку input, если её нет
     if not os.path.exists(INPUT_DIR):
         os.makedirs(INPUT_DIR)
-        print(f"    Создана папка: {INPUT_DIR}/")
+        print(f"  Создана папка: {INPUT_DIR}/")
+
+    # Режим 1: Экспорт из DoQA через API
+    if MODE == "export":
+        print("\n[1] Экспорт тест-кейсов из DoQA...")
+        export_file = export_cases_from_doqa()
+        xlsx_files = [os.path.basename(export_file)]
     
-    # Ищем все xlsx файлы в папке input
-    xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
+    # Режим 2: Обработка файлов из папки input
+    elif MODE == "file":
+        print(f"\n[1] Обработка файлов из папки {INPUT_DIR}/")
+        xlsx_files = [f for f in os.listdir(INPUT_DIR) if f.endswith(('.xlsx', '.xls'))]
+        
+        if not xlsx_files:
+            sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx\n"
+                     f"Поместите файлы экспорта DoQA в папку {INPUT_DIR}/ и запустите утилиту снова")
+        
+        print(f"    Найдено файлов: {len(xlsx_files)}")
+        for f in xlsx_files:
+            print(f"      - {f}")
     
-    if not xlsx_files:
-        sys.exit(f"ОШИБКА: В папке {INPUT_DIR}/ не найдено файлов xlsx\n"
-                 f"Поместите файлы экспорта DoQA в папку {INPUT_DIR}/ и запустите утилиту снова")
-    
-    print(f"    Найдено файлов: {len(xlsx_files)}")
-    for f in xlsx_files:
-        print(f"      - {f}")
-    
+    else:
+        sys.exit(f"ОШИБКА: Неверное значение MODE='{MODE}'. Допустимые: file, export")
+
     # Обрабатываем каждый файл по очереди
     cases = []
     for filename in xlsx_files:
@@ -251,9 +369,7 @@ def main():
         file_cases = get_cases_from_file(file_path)
         cases.extend(file_cases)
         
-        # 2) Ревью будет выполнен позже (после сбора всех кейсов)
-        
-        # 3) Удаляем файл из папки input
+        # 2) Удаляем файл из папки input
         try:
             os.remove(file_path)
             print(f"    ✓ Файл удалён: {filename}")
