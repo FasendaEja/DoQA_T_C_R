@@ -155,14 +155,26 @@ AI_MODEL=qwen3.8-max`}</Code>
                 ['DOQA_API_TOKEN', 'Bearer токен DoQA API (для режима export)'],
                 ['DOQA_SPACE_ID', 'ID пространства DoQA (для режима export)'],
                 ['EXPORT_MODE', 'Вариант экспорта: ids или filters (для режима export)'],
-                ['DOQA_STATUSES', 'Статусы для фильтрации: ready,draft,archived,broken'],
-                ['DOQA_CREATOR_IDS', 'ID авторов для фильтрации (через запятую)'],
-                ['DOQA_CHANGED_AT_FILTER', 'Фильтр по дате: 1-нет, 2-сутки, 3-час'],
+                ['DOQA_STATUSES', 'Статусы: ready,draft,archived,broken'],
+                ['DOQA_PRIORITIES', 'Приоритеты: low,medium,high'],
+                ['DOQA_SEARCH', 'Полнотекстовый поиск'],
+                ['DOQA_CREATOR_IDS', 'ID авторов (через запятую)'],
+                ['DOQA_RESPONSIBLE_IDS', 'ID ответственных (через запятую)'],
+                ['DOQA_FOLDER_IDS', 'ID папок (через запятую)'],
+                ['DOQA_TAG_IDS', 'ID тегов (через запятую)'],
+                ['DOQA_ATTRIBUTE_IDS', 'ID атрибутов (через запятую)'],
+                ['DOQA_CHANGED_AT_FILTER', 'Фильтр по дате изменения: 1-нет, 2-сутки, 3-час'],
+                ['DOQA_CREATED_AT_FROM', 'Дата создания от (ISO 8601)'],
+                ['DOQA_CREATED_AT_TO', 'Дата создания до (ISO 8601)'],
+                ['DOQA_SORT', 'Сортировка: id,title,creatorId,createdAt,changedAt,priority,status,tag'],
+                ['DOQA_DIRECTION', 'Направление сортировки: asc,desc'],
+                ['DOQA_AUTOMATION_STATUSES', 'Статусы автоматизации: manual,planned,automated'],
+                ['DOQA_CREATION_SOURCES', 'Источники создания: manual,autotest'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
                 ['AI_TIMEOUT', 'Таймаут ожидания ответа ИИ в секундах (по умолчанию 120)'],
-                ['AI_MAX_RETRIES', 'Максимум попыток при ошибке (по умолчанию 3, управляется OpenAI SDK)'],
+                ['AI_MAX_RETRIES', 'Максимум попыток при ошибке (по умолчанию 3)'],
                 ['PROMPT_FILE', 'Путь к файлу с промтом'],
                 ['RULES_FILE', 'Путь к файлу с правилами'],
                 ['OUTPUT_DIR', 'Директория для результатов'],
@@ -330,19 +342,65 @@ DOQA_BASE_URL=https://app.doqa.app
 DOQA_API_TOKEN=your_token
 DOQA_SPACE_ID=123
 
-# Фильтры (опционально):
+# Базовые фильтры:
 DOQA_STATUSES=draft,broken,review
+DOQA_PRIORITIES=high,medium
+DOQA_SEARCH=авторизация
+
+# Фильтры по ID:
 DOQA_CREATOR_IDS=10,20,30
-DOQA_CHANGED_AT_FILTER=2`}</Code>
+DOQA_RESPONSIBLE_IDS=40,50
+DOQA_FOLDER_IDS=100,200
+DOQA_TAG_IDS=5,6,7
+DOQA_ATTRIBUTE_IDS=1,2
+
+# Фильтры по датам:
+DOQA_CHANGED_AT_FILTER=2
+DOQA_CREATED_AT_FROM=2024-01-01T00:00:00
+DOQA_CREATED_AT_TO=2024-12-31T23:59:59
+
+# Сортировка:
+DOQA_SORT=changedAt
+DOQA_DIRECTION=desc
+
+# Дополнительные фильтры:
+DOQA_AUTOMATION_STATUSES=manual,planned
+DOQA_CREATION_SOURCES=manual`}</Code>
             
             <div className="mt-3 space-y-2 text-sm text-gray-600">
-              <p><strong>DOQA_STATUSES:</strong> ready, draft, archived, broken (через запятую)</p>
-              <p><strong>DOQA_CREATOR_IDS:</strong> ID авторов через запятую</p>
-              <p><strong>DOQA_CHANGED_AT_FILTER:</strong></p>
+              <p><strong>Базовые фильтры:</strong></p>
               <ul className="ml-4 list-disc">
-                <li><code className="bg-white px-1 rounded">1</code> — фильтр не используется</li>
-                <li><code className="bg-white px-1 rounded">2</code> — изменения за последние сутки</li>
-                <li><code className="bg-white px-1 rounded">3</code> — изменения за последний час</li>
+                <li><code className="bg-white px-1 rounded">DOQA_STATUSES</code> — ready, draft, archived, broken</li>
+                <li><code className="bg-white px-1 rounded">DOQA_PRIORITIES</code> — low, medium, high</li>
+                <li><code className="bg-white px-1 rounded">DOQA_SEARCH</code> — полнотекстовый поиск</li>
+              </ul>
+              
+              <p className="mt-2"><strong>Фильтры по ID:</strong></p>
+              <ul className="ml-4 list-disc">
+                <li><code className="bg-white px-1 rounded">DOQA_CREATOR_IDS</code> — ID авторов</li>
+                <li><code className="bg-white px-1 rounded">DOQA_RESPONSIBLE_IDS</code> — ID ответственных</li>
+                <li><code className="bg-white px-1 rounded">DOQA_FOLDER_IDS</code> — ID папок</li>
+                <li><code className="bg-white px-1 rounded">DOQA_TAG_IDS</code> — ID тегов</li>
+                <li><code className="bg-white px-1 rounded">DOQA_ATTRIBUTE_IDS</code> — ID атрибутов</li>
+              </ul>
+              
+              <p className="mt-2"><strong>Фильтры по датам:</strong></p>
+              <ul className="ml-4 list-disc">
+                <li><code className="bg-white px-1 rounded">DOQA_CHANGED_AT_FILTER</code>: 1-нет, 2-сутки, 3-час</li>
+                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_FROM</code> — дата создания от (ISO 8601)</li>
+                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_TO</code> — дата создания до (ISO 8601)</li>
+              </ul>
+              
+              <p className="mt-2"><strong>Сортировка:</strong></p>
+              <ul className="ml-4 list-disc">
+                <li><code className="bg-white px-1 rounded">DOQA_SORT</code> — id, title, creatorId, createdAt, changedAt, priority, status, tag</li>
+                <li><code className="bg-white px-1 rounded">DOQA_DIRECTION</code> — asc, desc</li>
+              </ul>
+              
+              <p className="mt-2"><strong>Дополнительные фильтры:</strong></p>
+              <ul className="ml-4 list-disc">
+                <li><code className="bg-white px-1 rounded">DOQA_AUTOMATION_STATUSES</code> — manual, planned, automated</li>
+                <li><code className="bg-white px-1 rounded">DOQA_CREATION_SOURCES</code> — manual, autotest</li>
               </ul>
             </div>
           </div>
