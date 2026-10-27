@@ -141,12 +141,12 @@ def export_cases_from_doqa() -> str:
         # Фильтр по дате изменения
         if DOQA_CHANGED_AT_FILTER == "2":
             # Последние сутки
-            from_date = (datetime.now() - timedelta(days=1)).isoformat()
+            from_date = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S.000Z')
             body["changedAt"] = {"from": from_date}
             print(f"    Изменено за последние сутки (с {from_date})")
         elif DOQA_CHANGED_AT_FILTER == "3":
             # Последний час
-            from_date = (datetime.now() - timedelta(hours=1)).isoformat()
+            from_date = (datetime.utcnow() - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S.000Z')
             body["changedAt"] = {"from": from_date}
             print(f"    Изменено за последний час (с {from_date})")
         # DOQA_CHANGED_AT_FILTER == "1" — фильтр не используется

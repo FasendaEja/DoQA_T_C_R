@@ -356,8 +356,8 @@ DOQA_ATTRIBUTE_IDS=1,2
 
 # Фильтры по датам:
 DOQA_CHANGED_AT_FILTER=2
-DOQA_CREATED_AT_FROM=2024-01-01T00:00:00
-DOQA_CREATED_AT_TO=2024-12-31T23:59:59
+DOQA_CREATED_AT_FROM=2024-01-01T00:00:00.000Z
+DOQA_CREATED_AT_TO=2024-12-31T23:59:59.000Z
 
 # Сортировка:
 DOQA_SORT=changedAt
@@ -387,8 +387,8 @@ DOQA_CREATION_SOURCES=manual`}</Code>
               <p className="mt-2"><strong>Фильтры по датам:</strong></p>
               <ul className="ml-4 list-disc">
                 <li><code className="bg-white px-1 rounded">DOQA_CHANGED_AT_FILTER</code>: 1-нет, 2-сутки, 3-час</li>
-                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_FROM</code> — дата создания от (ISO 8601)</li>
-                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_TO</code> — дата создания до (ISO 8601)</li>
+                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_FROM</code> — дата создания от (формат: 2024-12-08T21:00:00.000Z)</li>
+                <li><code className="bg-white px-1 rounded">DOQA_CREATED_AT_TO</code> — дата создания до (формат: 2024-12-08T21:00:00.000Z)</li>
               </ul>
               
               <p className="mt-2"><strong>Сортировка:</strong></p>
