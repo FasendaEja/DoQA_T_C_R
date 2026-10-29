@@ -392,12 +392,12 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
 def save_result(case_id: str, text: str) -> str:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"Ревью кейса_{case_id}_{ts}.txt"
+    filename = f"Ревью кейса_{case_id}_{ts}.md"
     path = os.path.join(OUTPUT_DIR, filename)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(f"Ревью тест-кейса ID: {case_id}\n")
-        f.write(f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n")
-        f.write("=" * 60 + "\n\n")
+        f.write(f"# Ревью тест-кейса ID: {case_id}\n\n")
+        f.write(f"**Дата:** {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n\n")
+        f.write("---\n\n")
         f.write(text)
     print(f"    ✓ Сохранено: {path}")
     return path

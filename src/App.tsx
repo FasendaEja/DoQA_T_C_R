@@ -73,7 +73,7 @@ function Overview() {
           <h3 className="font-semibold text-lg mb-3">📄 Результаты</h3>
           <ul className="space-y-2 text-gray-600">
             <li>✓ Отдельный файл для каждого кейса</li>
-            <li>✓ Формат: <code className="bg-gray-100 px-1 rounded text-sm">Ревью кейса_{'<id>'}_{'<дата>'}.txt</code></li>
+            <li>✓ Формат: <code className="bg-gray-100 px-1 rounded text-sm">Ревью кейса_{'<id>'}_{'<дата>'}.md</code></li>
           </ul>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-5">
@@ -302,7 +302,7 @@ function Usage() {
               <li>Утилита читает все xlsx файлы из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
               <li>Загружает промт и правила</li>
               <li>Каждый тест-кейс отправляется в ИИ отдельным запросом</li>
-              <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.txt</code></li>
+              <li>Результат сохраняется в файл <code className="bg-gray-100 px-1 rounded">Ревью кейса_{'<id>'}_{'<дата_время>'}.md</code></li>
               <li>Обработанные файлы удаляются из папки <code className="bg-gray-100 px-1 rounded">input/</code></li>
             </ol>
           </div>
@@ -466,8 +466,8 @@ function Files() {
 │   ├── README_WINDOWS.md               #   Инструкция для Windows
 │   └── .gitignore                      #   Исключения для git
 └── review_results/                     # Результаты (создаётся автоматически)
-    ├── Ревью кейса_456_2024-01-15_14-30-00.txt
-    └── Ревью кейса_789_2024-01-15_14-30-05.txt`}</Code>
+    ├── Ревью кейса_456_2024-01-15_14-30-00.md
+    └── Ревью кейса_789_2024-01-15_14-30-05.md`}</Code>
       </div>
 
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-5">
