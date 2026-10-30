@@ -213,7 +213,10 @@ AI_MODEL=qwen3.8-max`}</Code>
 SEND_COMMENTS_TO_API=1
 
 # Отдельный токен для API комментариев
-DOQA_COMMENTS_API_TOKEN=your_comments_token_here`}</Code>
+DOQA_COMMENTS_API_TOKEN=your_comments_token_here
+
+# Максимальное количество попыток при ошибке (по умолчанию 3)
+COMMENTS_MAX_RETRIES=3`}</Code>
         </div>
 
         <div className="space-y-2 text-sm text-purple-700">
@@ -223,6 +226,7 @@ DOQA_COMMENTS_API_TOKEN=your_comments_token_here`}</Code>
             <li>Если текст превышает 4998 символов — автоматически разбивается на части</li>
             <li>Переносы строк сохраняются (конвертируются в <code className="bg-purple-100 px-1 rounded">{'<br>'}</code>)</li>
             <li>Каждая часть отправляется отдельным запросом</li>
+            <li>При ошибке выполняется до 3 повторных попыток с экспоненциальной задержкой</li>
             <li>Результат появится в карточке тест-кейса в DoQA</li>
           </ul>
         </div>
