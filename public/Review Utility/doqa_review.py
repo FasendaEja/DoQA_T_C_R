@@ -468,7 +468,10 @@ def main():
     for i, case in enumerate(cases, 1):
         print(f"\n  [{i}/{len(cases)}] Кейс {case['id']}: {case['title'][:50]}...")
         result = review_case(case, prompt, rules)
+        # Сохраняем результат в файл, затем отправляем комментарий в DoQA (если включено)
         save_result(case["id"], result)
+        if SEND_COMMENTS_TO_API:
+            send_comment_to_api(case["id"], result)
 
     print("\n" + "=" * 60)
     print(f"  Готово! Результаты в: {os.path.abspath(OUTPUT_DIR)}")
