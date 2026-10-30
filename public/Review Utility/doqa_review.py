@@ -29,6 +29,7 @@ DOQA_API_TOKEN = os.getenv("DOQA_API_TOKEN", "")
 DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
 DOQA_COMMENTS_API_TOKEN = os.getenv("DOQA_COMMENTS_API_TOKEN", "")
 SEND_COMMENTS_TO_API = os.getenv("SEND_COMMENTS_TO_API", "0") == "1"
+COMMENTS_MAX_RETRIES = int(os.getenv("COMMENTS_MAX_RETRIES", "3"))
 EXPORT_MODE = os.getenv("EXPORT_MODE", "filters").lower()
 DOQA_STATUSES = os.getenv("DOQA_STATUSES", "")
 DOQA_CREATOR_IDS = os.getenv("DOQA_CREATOR_IDS", "")
@@ -406,13 +407,14 @@ def save_result(case_id: str, text: str) -> str:
 
 
 # ── 5. Отправка комментария в DoQA API ───────────────────────
-def send_comment_to_api(case_id: str, text: str) -> bool:
+def send_comment_to_api(case_id: str, text: str, max_retries: int = 3) -> bool:
     """
     Отправка результата ревью в DoQA через API /api/case-comments.
     
     Args:
         case_id: ID тест-кейса
         text: Текст ревью
+        max_retries: Максимальное количество попыток при ошибке (по умолчанию 3)
         
     Returns:
         True если успешно, False иначе
@@ -465,22 +467,42 @@ def send_comment_to_api(case_id: str, text: str) -> bool:
             "caseId": int(case_id),
         }
         
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
-            success_count += 1
-            
-            if len(parts) > 1:
-                print(f"    ✓ Комментарий {i}/{len(parts)} отправлен в DoQA")
-            else:
-                print(f"    ✓ Комментарий отправлен в DoQA")
+        # Retry логика для каждой части
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=30)
+                response.raise_for_status()
+                success_count += 1
                 
-        except requests.exceptions.HTTPError as e:
-            print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)}: HTTP {response.status_code}")
-            if response.text:
-                print(f"      {response.text[:200]}")
-        except Exception as e:
-            print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)}: {e}")
+                if len(parts) > 1:
+                    print(f"    ✓ Комментарий {i}/{len(parts)} отправлен в DoQA")
+                else:
+                    print(f"    ✓ Комментарий отправлен в DoQA")
+                break  # Успех, выходим из цикла попыток
+                
+            except requests.exceptions.HTTPError as e:
+                if attempt < max_retries:
+                    wait_time = 2 ** attempt  # Exponential backoff: 2, 4, 8 секунд
+                    print(f"    ⚠ Попытка {attempt}/{max_retries} не удалась: HTTP {response.status_code}")
+                    print(f"      Повторная попытка через {wait_time}с...")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)} после {max_retries} попыток: HTTP {response.status_code}")
+                    if response.text:
+                        print(f"      {response.text[:200]}")
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries:
+                    wait_time = 2 ** attempt
+                    print(f"    ⚠ Попытка {attempt}/{max_retries} не удалась: {e}")
+                    print(f"      Повторная попытка через {wait_time}с...")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)} после {max_retries} попыток: {e}")
+            except Exception as e:
+                print(f"    ✗ Непредвиденная ошибка отправки комментария {i}/{len(parts)}: {e}")
+                break  # Непредвиденная ошибка, не повторяем
     
     return success_count == len(parts)
 
@@ -555,7 +577,7 @@ def main():
         
         # Отправка результата в DoQA API
         if SEND_COMMENTS_TO_API:
-            send_comment_to_api(case["id"], result)
+            send_comment_to_api(case["id"], result, max_retries=COMMENTS_MAX_RETRIES)
 
     print("\n" + "=" * 60)
     print(f"  Готово! Результаты в: {os.path.abspath(OUTPUT_DIR)}")
