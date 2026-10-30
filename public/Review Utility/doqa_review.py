@@ -332,8 +332,8 @@ def review_case(case: dict, prompt: str, rules: str) -> str:
                 {"role": "system", "content": "Ты — опытный QA-инженер. Отвечай на русском языке."},
                 {"role": "user", "content": body},
             ],
-            temperature=0.3,
-            max_tokens=4000,
+            temperature=0.1,
+            max_tokens=20000,
         )
 
         if not response.choices or len(response.choices) == 0:
