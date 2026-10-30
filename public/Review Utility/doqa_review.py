@@ -577,7 +577,8 @@ def main():
         
         # Отправка результата в DoQA API
         if SEND_COMMENTS_TO_API:
-            send_comment_to_api(case["id"], result, max_retries=COMMENTS_MAX_RETRIES)
+            max_retries = globals().get('COMMENTS_MAX_RETRIES', 3)
+            send_comment_to_api(case["id"], result, max_retries=max_retries)
 
     print("\n" + "=" * 60)
     print(f"  Готово! Результаты в: {os.path.abspath(OUTPUT_DIR)}")
