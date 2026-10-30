@@ -84,6 +84,15 @@ function Overview() {
             <li>✓ Простой запуск одной командой</li>
           </ul>
         </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-5 md:col-span-2">
+          <h3 className="font-semibold text-lg mb-3">📤 Отправка в DoQA API</h3>
+          <ul className="space-y-2 text-gray-600">
+            <li>✓ Автоматическая отправка результатов ревью в DoQA через <code className="bg-gray-100 px-1 rounded text-sm">/api/case-comments</code></li>
+            <li>✓ Отдельный токен для API комментариев</li>
+            <li>✓ Автоматическое разбиение длинных текстов (лимит 4998 символов)</li>
+            <li>✓ Сохранение переносов строк</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -170,6 +179,8 @@ AI_MODEL=qwen3.8-max`}</Code>
                 ['DOQA_DIRECTION', 'Направление сортировки: asc,desc'],
                 ['DOQA_AUTOMATION_STATUSES', 'Статусы автоматизации: manual,planned,automated'],
                 ['DOQA_CREATION_SOURCES', 'Источники создания: manual,autotest'],
+                ['DOQA_COMMENTS_API_TOKEN', 'Отдельный токен для API комментариев'],
+                ['SEND_COMMENTS_TO_API', 'Отправлять результаты в API: 1-да, 0-нет'],
                 ['AI_BASE_URL', 'Базовый URL API провайдера ИИ (без /chat/completions)'],
                 ['AI_API_KEY', 'API-ключ провайдера ИИ'],
                 ['AI_MODEL', 'Модель ИИ (например, qwen3.8-max)'],
@@ -186,6 +197,34 @@ AI_MODEL=qwen3.8-max`}</Code>
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-5">
+        <h3 className="font-semibold text-purple-800 mb-2">📤 Отправка результатов в DoQA API</h3>
+        <p className="text-purple-700 mb-3">
+          Утилита может автоматически отправлять результаты ревью в DoQA через API{' '}
+          <code className="bg-purple-100 px-1 rounded">/api/case-comments</code>.
+        </p>
+        
+        <div className="bg-white border border-purple-200 rounded-lg p-4 mb-3">
+          <h4 className="font-semibold text-purple-800 mb-2">Настройка:</h4>
+          <Code lang="env">{`# Включить отправку результатов
+SEND_COMMENTS_TO_API=1
+
+# Отдельный токен для API комментариев
+DOQA_COMMENTS_API_TOKEN=your_comments_token_here`}</Code>
+        </div>
+
+        <div className="space-y-2 text-sm text-purple-700">
+          <p><strong>Как это работает:</strong></p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li>После ревью каждого кейса результат отправляется в DoQA как комментарий</li>
+            <li>Если текст превышает 4998 символов — автоматически разбивается на части</li>
+            <li>Переносы строк сохраняются (конвертируются в <code className="bg-purple-100 px-1 rounded">{'<br>'}</code>)</li>
+            <li>Каждая часть отправляется отдельным запросом</li>
+            <li>Результат появится в карточке тест-кейса в DoQA</li>
+          </ul>
         </div>
       </div>
 

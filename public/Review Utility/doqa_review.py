@@ -27,6 +27,8 @@ INPUT_DIR = os.getenv("INPUT_DIR", "input")
 DOQA_BASE_URL = os.getenv("DOQA_BASE_URL", "https://app.doqa.app")
 DOQA_API_TOKEN = os.getenv("DOQA_API_TOKEN", "")
 DOQA_SPACE_ID = os.getenv("DOQA_SPACE_ID", "")
+DOQA_COMMENTS_API_TOKEN = os.getenv("DOQA_COMMENTS_API_TOKEN", "")
+SEND_COMMENTS_TO_API = os.getenv("SEND_COMMENTS_TO_API", "0") == "1"
 EXPORT_MODE = os.getenv("EXPORT_MODE", "filters").lower()
 DOQA_STATUSES = os.getenv("DOQA_STATUSES", "")
 DOQA_CREATOR_IDS = os.getenv("DOQA_CREATOR_IDS", "")
@@ -403,6 +405,86 @@ def save_result(case_id: str, text: str) -> str:
     return path
 
 
+# ── 5. Отправка комментария в DoQA API ───────────────────────
+def send_comment_to_api(case_id: str, text: str) -> bool:
+    """
+    Отправка результата ревью в DoQA через API /api/case-comments.
+    
+    Args:
+        case_id: ID тест-кейса
+        text: Текст ревью
+        
+    Returns:
+        True если успешно, False иначе
+    """
+    if not SEND_COMMENTS_TO_API:
+        return False
+    
+    if not DOQA_COMMENTS_API_TOKEN:
+        print(f"    ⚠ Не указан DOQA_COMMENTS_API_TOKEN, комментарий не отправлен")
+        return False
+    
+    # Максимальная длина контента в одном запросе
+    MAX_LENGTH = 4998
+    
+    # Разбиваем текст на части, если он слишком длинный
+    # Сохраняем переносы строк
+    parts = []
+    if len(text) <= MAX_LENGTH:
+        parts = [text]
+    else:
+        # Разбиваем по символам, сохраняя переносы строк
+        current_part = ""
+        for char in text:
+            if len(current_part) + 1 > MAX_LENGTH:
+                parts.append(current_part)
+                current_part = char
+            else:
+                current_part += char
+        
+        if current_part:
+            parts.append(current_part)
+    
+    # Отправляем каждую часть
+    url = f"{DOQA_BASE_URL}/api/case-comments"
+    headers = {
+        "Authorization": f"Bearer {DOQA_COMMENTS_API_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    
+    success_count = 0
+    for i, part in enumerate(parts, 1):
+        # Оборачиваем в HTML теги, сохраняя переносы строк
+        # Заменяем \n на <br> для корректного отображения в HTML
+        html_content = part.replace("\n", "<br>")
+        content = f"<p>{html_content}</p>"
+        
+        payload = {
+            "content": content,
+            "mentionedUsers": [],
+            "caseId": int(case_id),
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            success_count += 1
+            
+            if len(parts) > 1:
+                print(f"    ✓ Комментарий {i}/{len(parts)} отправлен в DoQA")
+            else:
+                print(f"    ✓ Комментарий отправлен в DoQA")
+                
+        except requests.exceptions.HTTPError as e:
+            print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)}: HTTP {response.status_code}")
+            if response.text:
+                print(f"      {response.text[:200]}")
+        except Exception as e:
+            print(f"    ✗ Ошибка отправки комментария {i}/{len(parts)}: {e}")
+    
+    return success_count == len(parts)
+
+
 # ── Главная ──────────────────────────────────────────────────
 def main():
     print("=" * 60)
@@ -470,6 +552,8 @@ def main():
         result = review_case(case, prompt, rules)
         # Сохраняем результат в файл, затем отправляем комментарий в DoQA (если включено)
         save_result(case["id"], result)
+        
+        # Отправка результата в DoQA API
         if SEND_COMMENTS_TO_API:
             send_comment_to_api(case["id"], result)
 
